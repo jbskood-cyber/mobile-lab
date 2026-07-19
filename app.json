@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Mobile Lab",
+    "slug": "mobile-lab",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "mobilelab",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.jbskoodcyber.mobilelab"
+    },
+    "android": {
+      "package": "com.jbskoodcyber.mobilelab",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
