@@ -4,7 +4,7 @@
 2. Reducirlo a una sola ruta temporal.
 3. Configurar app, TypeScript y ESLint.
 4. Documentar instalación, roles y reglas.
-5. Instalar dependencias y generar lockfile.
+5. Resolver e instalar las dependencias necesarias.
 6. Ejecutar typecheck, lint, Expo Doctor y export Android.
 7. Publicar un commit normal sobre `main`.
 8. Pedir al usuario la validación física en Expo Go.
