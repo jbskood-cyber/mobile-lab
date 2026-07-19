@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Expo-generated files
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Generated native projects
+/android/
+/ios/
+.kotlin/
+
+# Native credentials and signing files
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Metro and debug output
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# TypeScript
+*.tsbuildinfo
+
+# Git worktrees
+.worktrees/
