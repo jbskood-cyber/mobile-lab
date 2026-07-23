@@ -28,14 +28,33 @@ test('v2 state migrates to v3 without losing tasks and gains planning defaults',
   assert.equal(state.planning.workdayStartHour, 7);
 });
 
-test('completion-based recurrence anchors the next occurrence to completion time', () => {
+test('completion-based recurrence anchors the next occurrence to completion time and preserves offsets', () => {
   let state = model.createInitialState(NOW);
-  state = model.createTask(state, { title: 'Rutina', projectId: 'personal', dueAt: NOW, plannedStartAt: NOW, recurrence: { kind: 'daily', interval: 2, fromCompletion: true } }, NOW - 1000);
+  const originalStart = NOW;
+  const originalDue = NOW + 60 * 60 * 1000;
+  const originalReminder = NOW - 10 * 60 * 1000;
+  state = model.createTask(state, { title: 'Rutina', projectId: 'personal', dueAt: originalDue, plannedStartAt: originalStart, reminderAt: originalReminder, durationMinutes: 60, recurrence: { kind: 'daily', interval: 2, fromCompletion: true } }, NOW - 1000);
   const task = state.tasks[0];
   const completedAt = NOW + 5 * 60 * 60 * 1000;
   const result = model.completeTask(state, task.id, completedAt);
   assert.ok(result.generatedTask);
   assert.equal(result.generatedTask.plannedStartAt, completedAt + 2 * model.DAY_MS);
+  assert.equal(result.generatedTask.dueAt - result.generatedTask.plannedStartAt, originalDue - originalStart);
+  assert.equal(result.generatedTask.reminderAt - result.generatedTask.plannedStartAt, originalReminder - originalStart);
+});
+
+test('replanning a task moves deadline and reminder with the new calendar slot', () => {
+  let state = model.createInitialState(NOW);
+  const oldStart = NOW - model.DAY_MS;
+  state = model.createTask(state, { title: 'Recuperar', plannedStartAt: oldStart, dueAt: oldStart + 45 * 60_000, reminderAt: oldStart - 5 * 60_000, durationMinutes: 45, captured: false }, NOW - 2000);
+  const task = state.tasks[0];
+  const newStart = NOW + model.DAY_MS;
+  const replanned = model.scheduleTask(state, task.id, newStart, NOW);
+  const updated = replanned.tasks.find((item) => item.id === task.id);
+  assert.equal(updated.plannedStartAt, newStart);
+  assert.equal(updated.dueAt, newStart + 45 * 60_000);
+  assert.equal(updated.reminderAt, newStart - 5 * 60_000);
+  assert.equal(updated.captured, false);
 });
 
 test('demo state populates calendar, inbox, routines and analytics history', () => {
