@@ -13,8 +13,12 @@
   },
   "include": [
     "src/core/model.ts",
+    "src/core/migration.ts",
+    "src/core/agenda.ts",
+    "src/core/analytics.ts",
     "src/core/focusTimer.ts",
     "src/core/hydration.ts",
+    "src/platform/reminderModel.ts",
     "src/ui/uiState.ts",
     "src/ui/formModel.ts",
     "src/features/stats/statsModel.ts"
