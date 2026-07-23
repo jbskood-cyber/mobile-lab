@@ -16,9 +16,9 @@ const routeMeta: Record<string, { label: string; icon: IconName }> = {
 
 export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const { keyboardVisible, overlayCount, scrollToTop } = useFocoUI();
+  const { keyboardVisible, overlayCount, appMenuVisible, focusImmersive, scrollToTop } = useFocoUI();
 
-  if (keyboardVisible || overlayCount > 0) return null;
+  if (keyboardVisible || overlayCount > 0 || appMenuVisible || focusImmersive) return null;
 
   return (
     <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 7) }]}>
