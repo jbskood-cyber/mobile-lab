@@ -34,3 +34,6 @@ jobs:
 
       - name: Expo Doctor
         run: npx expo-doctor@latest
+
+      - name: Export Android bundle
+        run: npx expo export --platform android --no-minify --no-bytecode --max-workers 2
