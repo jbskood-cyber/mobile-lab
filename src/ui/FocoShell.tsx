@@ -6,6 +6,7 @@ import { FocoIcon, type IconName } from './FocoIcon';
 import { useFocoUI } from './FocoUIContext';
 import { foco } from './focoTheme';
 import { pressedStyle } from './premium';
+import { typeScale } from './typeScale';
 
 type ScreenProps = PropsWithChildren<{
   title: string;
@@ -115,12 +116,12 @@ const styles = StyleSheet.create({
   ambientTop: { position: 'absolute', top: -130, right: -90, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255,255,255,0.016)' },
   toolbar: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  title: { color: foco.colors.text, fontSize: 44, lineHeight: 49, fontWeight: '700', letterSpacing: -1.5 },
-  subtitle: { color: foco.colors.muted, fontSize: 16, lineHeight: 22, marginTop: 4 },
-  surface: { backgroundColor: foco.colors.panel, borderWidth: 1, borderColor: foco.colors.border, borderRadius: foco.radius.md },
+  title: { color: foco.colors.text, ...typeScale.display },
+  subtitle: { color: foco.colors.muted, ...typeScale.body, marginTop: 4 },
+  surface: { backgroundColor: foco.colors.panel, borderWidth: 1, borderColor: foco.colors.border, borderRadius: foco.radius.surface },
   sectionRow: { marginTop: 20, marginBottom: 10, minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitleLine: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 },
-  sectionTitle: { color: foco.colors.text, fontSize: 18, fontWeight: '600' },
-  sectionDetail: { flexShrink: 1, color: foco.colors.muted, fontSize: 14 },
-  eyebrow: { color: foco.colors.muted, fontSize: 11.5, fontWeight: '700', letterSpacing: 3.2 },
+  sectionTitle: { color: foco.colors.text, ...typeScale.section },
+  sectionDetail: { flexShrink: 1, color: foco.colors.muted, fontSize: 14, lineHeight: 19 },
+  eyebrow: { color: foco.colors.muted, ...typeScale.caption, fontWeight: '700', letterSpacing: 3.2 },
 });
