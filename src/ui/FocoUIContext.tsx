@@ -1,0 +1,172 @@
+import {
+  createContext,
+  type PropsWithChildren,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
+import { Keyboard } from 'react-native';
+
+import { createUIState, reduceUIState } from './uiState';
+
+type ScrollTarget = () => void;
+type UndoRequest = {
+  id: number;
+  message: string;
+  actionLabel: string;
+  onAction: () => void;
+};
+
+type FocoUIValue = {
+  overlayCount: number;
+  keyboardVisible: boolean;
+  appMenuVisible: boolean;
+  resetArmed: boolean;
+  focusImmersive: boolean;
+  undo: UndoRequest | null;
+  openAppMenu: () => void;
+  closeAppMenu: () => void;
+  registerOverlay: () => void;
+  unregisterOverlay: () => void;
+  requestReset: () => void;
+  cancelReset: () => void;
+  completeReset: () => void;
+  setFocusImmersive: (active: boolean) => void;
+  showUndo: (message: string, onAction: () => void, actionLabel?: string) => void;
+  runUndo: () => void;
+  dismissUndo: () => void;
+  registerScrollTarget: (key: string, target: ScrollTarget) => () => void;
+  scrollToTop: (key: string) => void;
+};
+
+const FocoUIContext = createContext<FocoUIValue | null>(null);
+
+export function FocoUIProvider({ children }: PropsWithChildren) {
+  const [state, dispatch] = useReducer(reduceUIState, undefined, createUIState);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [appMenuVisible, setAppMenuVisible] = useState(false);
+  const [focusImmersive, setFocusImmersive] = useState(false);
+  const [undo, setUndo] = useState<UndoRequest | null>(null);
+  const undoId = useRef(0);
+  const undoRef = useRef<UndoRequest | null>(null);
+  const scrollTargets = useRef(new Map<string, ScrollTarget>());
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!undo) return;
+    const timeout = setTimeout(() => {
+      if (undoRef.current?.id !== undo.id) return;
+      undoRef.current = null;
+      setUndo(null);
+    }, 4500);
+    return () => clearTimeout(timeout);
+  }, [undo]);
+
+  const openAppMenu = useCallback(() => {
+    Keyboard.dismiss();
+    setAppMenuVisible(true);
+  }, []);
+
+  const closeAppMenu = useCallback(() => {
+    setAppMenuVisible(false);
+    dispatch({ type: 'cancel-reset' });
+  }, []);
+
+  const registerOverlay = useCallback(() => dispatch({ type: 'open-overlay' }), []);
+  const unregisterOverlay = useCallback(() => dispatch({ type: 'close-overlay' }), []);
+  const requestReset = useCallback(() => dispatch({ type: 'request-reset' }), []);
+  const cancelReset = useCallback(() => dispatch({ type: 'cancel-reset' }), []);
+  const completeReset = useCallback(() => dispatch({ type: 'complete-reset' }), []);
+
+  const showUndo = useCallback((message: string, onAction: () => void, actionLabel = 'Deshacer') => {
+    undoId.current += 1;
+    const request = { id: undoId.current, message, onAction, actionLabel };
+    undoRef.current = request;
+    setUndo(request);
+  }, []);
+
+  const runUndo = useCallback(() => {
+    const current = undoRef.current;
+    if (!current) return;
+    undoRef.current = null;
+    setUndo(null);
+    current.onAction();
+  }, []);
+
+  const dismissUndo = useCallback(() => {
+    undoRef.current = null;
+    setUndo(null);
+  }, []);
+
+  const registerScrollTarget = useCallback((key: string, target: ScrollTarget) => {
+    scrollTargets.current.set(key, target);
+    return () => {
+      if (scrollTargets.current.get(key) === target) scrollTargets.current.delete(key);
+    };
+  }, []);
+
+  const scrollToTop = useCallback((key: string) => {
+    scrollTargets.current.get(key)?.();
+  }, []);
+
+  const value = useMemo<FocoUIValue>(() => ({
+    overlayCount: state.overlays,
+    keyboardVisible,
+    appMenuVisible,
+    resetArmed: state.resetArmed,
+    focusImmersive,
+    undo,
+    openAppMenu,
+    closeAppMenu,
+    registerOverlay,
+    unregisterOverlay,
+    requestReset,
+    cancelReset,
+    completeReset,
+    setFocusImmersive,
+    showUndo,
+    runUndo,
+    dismissUndo,
+    registerScrollTarget,
+    scrollToTop,
+  }), [
+    state.overlays,
+    state.resetArmed,
+    keyboardVisible,
+    appMenuVisible,
+    focusImmersive,
+    undo,
+    openAppMenu,
+    closeAppMenu,
+    registerOverlay,
+    unregisterOverlay,
+    requestReset,
+    cancelReset,
+    completeReset,
+    showUndo,
+    runUndo,
+    dismissUndo,
+    registerScrollTarget,
+    scrollToTop,
+  ]);
+
+  return <FocoUIContext.Provider value={value}>{children}</FocoUIContext.Provider>;
+}
+
+export function useFocoUI() {
+  const value = useContext(FocoUIContext);
+  if (!value) throw new Error('useFocoUI must be used inside FocoUIProvider');
+  return value;
+}

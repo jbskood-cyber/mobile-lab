@@ -1,14 +1,19 @@
-import type { PropsWithChildren, ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { type PropsWithChildren, type ReactNode, useEffect, useRef } from 'react';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FocoIcon, type IconName } from './FocoIcon';
+import { useFocoUI } from './FocoUIContext';
 import { foco } from './focoTheme';
+import { pressedStyle } from './premium';
+import { typeScale } from './typeScale';
 
 type ScreenProps = PropsWithChildren<{
   title: string;
   subtitle?: string;
+  screenKey?: string;
   rightIcon?: IconName;
+  rightAccessibilityLabel?: string;
   onRightPress?: () => void;
   scroll?: boolean;
   contentBottomPadding?: number;
@@ -17,26 +22,48 @@ type ScreenProps = PropsWithChildren<{
 export function FocoScreen({
   title,
   subtitle,
+  screenKey = title.toLowerCase(),
   rightIcon,
+  rightAccessibilityLabel = 'Acción de pantalla',
   onRightPress,
   scroll = true,
-  contentBottomPadding = 116,
+  contentBottomPadding = 108,
   children,
 }: ScreenProps) {
+  const scrollRef = useRef<ScrollView>(null);
+  const { openAppMenu, registerScrollTarget } = useFocoUI();
+
+  useEffect(() => registerScrollTarget(screenKey, () => {
+    Keyboard.dismiss();
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }), [registerScrollTarget, screenKey]);
+
   const content = (
     <View style={[styles.content, { paddingBottom: contentBottomPadding }]}> 
       <View style={styles.toolbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Abrir menú" hitSlop={10} style={styles.iconButton}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Abrir menú de FOCO"
+          hitSlop={8}
+          onPress={openAppMenu}
+          style={({ pressed }) => [styles.iconButton, pressed && pressedStyle]}
+        >
           <FocoIcon name="menu" size={27} color={foco.colors.text} />
         </Pressable>
         {rightIcon ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Acción de pantalla" hitSlop={10} style={styles.iconButton} onPress={onRightPress}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={rightAccessibilityLabel}
+            hitSlop={8}
+            style={({ pressed }) => [styles.iconButton, pressed && pressedStyle]}
+            onPress={onRightPress}
+          >
             <FocoIcon name={rightIcon} size={25} color={foco.colors.text} />
           </Pressable>
         ) : <View style={styles.iconButton} />}
       </View>
-      <Text style={styles.title} maxFontSizeMultiplier={1.15}>{title}</Text>
-      {subtitle ? <Text style={styles.subtitle} maxFontSizeMultiplier={1.15}>{subtitle}</Text> : null}
+      <Text style={styles.title} maxFontSizeMultiplier={1.18}>{title}</Text>
+      {subtitle ? <Text style={styles.subtitle} maxFontSizeMultiplier={1.25}>{subtitle}</Text> : null}
       {children}
     </View>
   );
@@ -44,9 +71,16 @@ export function FocoScreen({
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View pointerEvents="none" style={styles.ambientTop} />
-      <View pointerEvents="none" style={styles.ambientBottom} />
       {scroll ? (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          ref={scrollRef}
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets
+        >
           {content}
         </ScrollView>
       ) : content}
@@ -62,8 +96,8 @@ export function SectionTitle({ title, detail, action }: { title: string; detail?
   return (
     <View style={styles.sectionRow}>
       <View style={styles.sectionTitleLine}>
-        <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.15}>{title}</Text>
-        {detail ? <Text style={styles.sectionDetail}>{detail}</Text> : null}
+        <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.2}>{title}</Text>
+        {detail ? <Text style={styles.sectionDetail} numberOfLines={1}>{detail}</Text> : null}
       </View>
       {action}
     </View>
@@ -78,17 +112,16 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: foco.colors.bg },
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1 },
-  content: { paddingHorizontal: 22 },
-  ambientTop: { position: 'absolute', top: -120, right: -80, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255,255,255,0.018)' },
-  ambientBottom: { position: 'absolute', bottom: 40, left: -120, width: 320, height: 320, borderRadius: 160, backgroundColor: 'rgba(255,255,255,0.012)' },
-  toolbar: { height: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  title: { color: foco.colors.text, fontSize: 46, lineHeight: 52, fontWeight: '700', letterSpacing: -1.6 },
-  subtitle: { color: foco.colors.muted, fontSize: 17, lineHeight: 23, marginTop: 5 },
-  surface: { backgroundColor: foco.colors.panel, borderWidth: 1, borderColor: foco.colors.border, borderRadius: foco.radius.md },
-  sectionRow: { marginTop: 22, marginBottom: 12, minHeight: 30, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitleLine: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  sectionTitle: { color: foco.colors.text, fontSize: 19, fontWeight: '600' },
-  sectionDetail: { color: foco.colors.muted, fontSize: 15 },
-  eyebrow: { color: foco.colors.muted, fontSize: 12, fontWeight: '700', letterSpacing: 3.5 },
+  content: { paddingHorizontal: 20 },
+  ambientTop: { position: 'absolute', top: -130, right: -90, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255,255,255,0.016)' },
+  toolbar: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  title: { color: foco.colors.text, ...typeScale.display },
+  subtitle: { color: foco.colors.muted, ...typeScale.body, marginTop: 4 },
+  surface: { backgroundColor: foco.colors.panel, borderWidth: 1, borderColor: foco.colors.border, borderRadius: foco.radius.surface },
+  sectionRow: { marginTop: 20, marginBottom: 10, minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitleLine: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 },
+  sectionTitle: { color: foco.colors.text, ...typeScale.section },
+  sectionDetail: { flexShrink: 1, color: foco.colors.muted, fontSize: 14, lineHeight: 19 },
+  eyebrow: { color: foco.colors.muted, ...typeScale.caption, fontWeight: '700', letterSpacing: 3.2 },
 });

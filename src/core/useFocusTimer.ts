@@ -1,6 +1,9 @@
 import Storage from 'expo-sqlite/kv-store';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
+import { useFocoUI } from '@/src/ui/FocoUIContext';
+import { hapticImpact, hapticSelection, hapticSuccess, hapticWarning } from '@/src/ui/premium';
 import { useFocoStore } from './FocoStore';
 import {
   advancePomodoro,
@@ -16,7 +19,6 @@ import {
   type FocusRuntime,
 } from './focusTimer';
 import type { FocusMode } from './model';
-import { hapticImpact, hapticSelection, hapticSuccess, hapticWarning } from '@/src/ui/premium';
 
 const TIMER_KEY = 'foco:timer:v1';
 
@@ -39,10 +41,13 @@ function normalizeRuntime(value: unknown): FocusRuntime {
 }
 
 export function useFocusTimer(projectId: string) {
-  const { addSession } = useFocoStore();
+  const { addSession, resetToken } = useFocoStore();
+  const { setFocusImmersive } = useFocoUI();
   const [runtime, setRuntime] = useState<FocusRuntime>(createFocusRuntime);
   const [now, setNow] = useState(Date.now());
   const [ready, setReady] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const lastCompletedAnchor = useRef<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -68,10 +73,25 @@ export function useFocusTimer(projectId: string) {
   }, []);
 
   useEffect(() => {
+    if (!ready || resetToken === 0) return;
+    const reset = createFocusRuntime();
+    lastCompletedAnchor.current = null;
+    setRuntime(reset);
+    setNow(Date.now());
+    setMessage('Datos locales reiniciados.');
+    void Storage.setItem(TIMER_KEY, JSON.stringify(reset)).catch(() => undefined);
+  }, [ready, resetToken]);
+
+  useEffect(() => {
+    setFocusImmersive(runtime.running);
+    return () => setFocusImmersive(false);
+  }, [runtime.running, setFocusImmersive]);
+
+  useEffect(() => {
     if (!ready) return;
     const timeout = setTimeout(() => {
       void Storage.setItem(TIMER_KEY, JSON.stringify(runtime)).catch(() => undefined);
-    }, 80);
+    }, 100);
     return () => clearTimeout(timeout);
   }, [ready, runtime]);
 
@@ -82,11 +102,27 @@ export function useFocusTimer(projectId: string) {
     return () => clearInterval(interval);
   }, [runtime.running]);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setNow(Date.now());
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!message) return;
+    const timeout = setTimeout(() => setMessage(null), 3600);
+    return () => clearTimeout(timeout);
+  }, [message]);
+
   const seconds = getTimerSeconds(runtime, now);
   const progress = getTimerProgress(runtime, now);
 
   useEffect(() => {
     if (!ready || !runtime.running || runtime.mode !== 'pomodoro' || seconds > 0) return;
+    if (runtime.anchorMs > 0 && lastCompletedAnchor.current === runtime.anchorMs) return;
+    lastCompletedAnchor.current = runtime.anchorMs;
+
     const endedAt = Date.now();
     if (runtime.phase === 'focus') {
       addSession({
@@ -96,8 +132,10 @@ export function useFocusTimer(projectId: string) {
         endedAt,
         durationSec: runtime.focusSeconds,
       });
+      setMessage('Sesión guardada en tus estadísticas.');
       hapticSuccess();
     } else {
+      setMessage('Descanso completado.');
       hapticSelection();
     }
     setRuntime((current) => advancePomodoro({ ...current, running: false, baseSeconds: 0, anchorMs: 0 }));
@@ -108,6 +146,7 @@ export function useFocusTimer(projectId: string) {
     const timestamp = Date.now();
     setRuntime((current) => current.running ? pauseTimer(current, timestamp) : startTimer(current, timestamp));
     setNow(timestamp);
+    setMessage(null);
     hapticImpact();
   }, []);
 
@@ -123,8 +162,10 @@ export function useFocusTimer(projectId: string) {
           endedAt,
           durationSec,
         });
+        setMessage('Sesión guardada en tus estadísticas.');
         hapticSuccess();
       } else {
+        setMessage('Sesión demasiado breve para registrarla.');
         hapticWarning();
       }
       return resetTimer(current);
@@ -135,24 +176,28 @@ export function useFocusTimer(projectId: string) {
   const reset = useCallback(() => {
     setRuntime((current) => resetTimer(current));
     setNow(Date.now());
+    setMessage('Temporizador reiniciado.');
     hapticSelection();
   }, []);
 
   const changeMode = useCallback((mode: FocusMode) => {
     setRuntime((current) => setTimerMode(current, mode));
     setNow(Date.now());
+    setMessage(null);
     hapticSelection();
   }, []);
 
   const configure = useCallback((values: Partial<Pick<FocusRuntime, 'focusSeconds' | 'breakSeconds' | 'targetCycles'>>) => {
     setRuntime((current) => configureTimer(current, values));
     setNow(Date.now());
+    setMessage('Configuración aplicada.');
     hapticSuccess();
   }, []);
 
   const skipPhase = useCallback(() => {
     setRuntime((current) => current.mode === 'pomodoro' ? advancePomodoro(pauseTimer(current, Date.now())) : resetTimer(current));
     setNow(Date.now());
+    setMessage(null);
     hapticSelection();
   }, []);
 
@@ -161,11 +206,12 @@ export function useFocusTimer(projectId: string) {
     seconds,
     progress,
     ready,
+    message,
     toggle,
     stop,
     reset,
     changeMode,
     configure,
     skipPhase,
-  }), [runtime, seconds, progress, ready, toggle, stop, reset, changeMode, configure, skipPhase]);
+  }), [runtime, seconds, progress, ready, message, toggle, stop, reset, changeMode, configure, skipPhase]);
 }

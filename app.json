@@ -1,22 +1,39 @@
 {
   "expo": {
-    "name": "Mobile Lab",
-    "slug": "mobile-lab",
-    "version": "0.1.0",
+    "name": "FOCO",
+    "slug": "foco",
+    "version": "0.2.0",
     "orientation": "portrait",
-    "scheme": "mobilelab",
+    "scheme": "foco",
     "userInterfaceStyle": "dark",
+    "backgroundColor": "#050607",
     "newArchEnabled": true,
     "ios": {
-      "bundleIdentifier": "com.jbskoodcyber.mobilelab"
+      "bundleIdentifier": "com.jbskoodcyber.foco",
+      "supportsTablet": false
     },
     "android": {
-      "package": "com.jbskoodcyber.mobilelab",
+      "package": "com.jbskoodcyber.foco",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": true
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#050607"
+        }
+      ],
+      [
+        "expo-navigation-bar",
+        {
+          "backgroundColor": "#050607",
+          "barStyle": "light",
+          "borderColor": "#050607",
+          "position": "absolute"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
