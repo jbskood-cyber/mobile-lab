@@ -1,11 +1,5 @@
-import { PlaceholderScreen } from '@/src/ui/PlaceholderScreen';
+import { ProjectsScreen } from '@/src/features/projects/ProjectsScreen';
 
 export default function ProjectsRoute() {
-  return (
-    <PlaceholderScreen
-      eyebrow="ORGANIZA"
-      title="Proyectos"
-      description="La navegación ya está activa. El siguiente bloque incorporará proyectos, progreso y planificación con el mismo sistema graphite."
-    />
-  );
+  return <ProjectsScreen />;
 }
