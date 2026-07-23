@@ -2,20 +2,22 @@
   "expo": {
     "name": "FOCO",
     "slug": "foco",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "orientation": "portrait",
     "scheme": "foco",
-    "userInterfaceStyle": "dark",
-    "backgroundColor": "#050607",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#F6F7F9",
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.jbskoodcyber.foco",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "userInterfaceStyle": "automatic"
     },
     "android": {
       "package": "com.jbskoodcyber.foco",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": true
+      "predictiveBackGestureEnabled": true,
+      "userInterfaceStyle": "automatic"
     },
     "plugins": [
       "expo-router",
@@ -23,15 +25,18 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#050607"
+          "backgroundColor": "#F6F7F9",
+          "dark": {
+            "backgroundColor": "#08090B"
+          }
         }
       ],
       [
         "expo-navigation-bar",
         {
-          "backgroundColor": "#050607",
+          "backgroundColor": "#08090B",
           "barStyle": "light",
-          "borderColor": "#050607",
+          "borderColor": "#08090B",
           "position": "absolute"
         }
       ]
