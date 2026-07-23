@@ -1,12 +1,15 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "noEmit": false,
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
     "outDir": ".test-dist",
-    "rootDir": ".",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "target": "ES2022"
+    "rootDir": "src/features/today"
   },
   "include": ["src/features/today/model.ts"]
 }
