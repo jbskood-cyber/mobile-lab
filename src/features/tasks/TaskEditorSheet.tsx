@@ -56,6 +56,8 @@ export function TaskEditorSheet({ visible, task, defaultProjectId, defaultDueAt,
     if (!task) setReminderAt(undefined);
   }, [defaultDueAt, defaultProjectId, projects, task, visible]);
 
+  const reminderInvalid = reminderAt !== undefined && dueAt !== undefined && reminderAt > dueAt;
+
   const addDraftSubtask = () => {
     const normalized = subtaskDraft.trim();
     if (!normalized) return;
@@ -66,7 +68,7 @@ export function TaskEditorSheet({ visible, task, defaultProjectId, defaultDueAt,
   };
 
   const save = () => {
-    if (!title.trim()) return;
+    if (!title.trim() || reminderInvalid) return;
     const payload = { title, projectId, priority, dueAt, reminderAt, recurrence: { kind: recurrence, interval: 1 }, estimatedPomodoros, notes, subtasks };
     const saved = task ? updateTaskDetails(task.id, payload) : createTask(payload);
     if (!saved) return;
@@ -77,7 +79,7 @@ export function TaskEditorSheet({ visible, task, defaultProjectId, defaultDueAt,
   };
 
   return (
-    <FocoSheet visible={visible} title={task ? 'Editar tarea' : 'Nueva tarea'} subtitle="Planifica solo lo necesario; podrás cambiarlo después." onClose={onClose} footer={<><SheetButton label="Cancelar" variant="secondary" onPress={onClose} /><SheetButton label={task ? 'Guardar' : 'Crear'} onPress={save} disabled={!title.trim()} /></>}>
+    <FocoSheet visible={visible} title={task ? 'Editar tarea' : 'Nueva tarea'} subtitle="Planifica solo lo necesario; podrás cambiarlo después." onClose={onClose} footer={<><SheetButton label="Cancelar" variant="secondary" onPress={onClose} /><SheetButton label={task ? 'Guardar' : 'Crear'} onPress={save} disabled={!title.trim() || reminderInvalid} /></>}>
       <FieldLabel>TÍTULO</FieldLabel>
       <TextInput autoFocus={!task} value={title} onChangeText={setTitle} placeholder="¿Qué necesitas hacer?" placeholderTextColor={foco.colors.subtle} autoCapitalize="sentences" returnKeyType="next" style={styles.input} />
 
@@ -91,6 +93,7 @@ export function TaskEditorSheet({ visible, task, defaultProjectId, defaultDueAt,
 
       <FieldLabel>RECORDATORIO</FieldLabel>
       <NativeDateTimeField value={reminderAt} onChange={setReminderAt} minimumDate={Date.now()} accessibilityLabel="Recordatorio" />
+      {reminderInvalid ? <Text accessibilityLiveRegion="polite" style={styles.error}>El recordatorio debe ocurrir antes de la fecha límite.</Text> : null}
 
       <FieldLabel>REPETICIÓN</FieldLabel>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
@@ -137,6 +140,7 @@ function ChoiceChip({ label, selected, onPress, flex = false }: { label: string;
 const styles = StyleSheet.create({
   input: { minHeight: 52, borderRadius: 14, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, color: foco.colors.text, paddingHorizontal: 14, fontSize: 16, marginBottom: 18 },
   notes: { minHeight: 110, paddingTop: 13 },
+  error: { color: '#DCA8AF', fontSize: 12.5, marginTop: -12, marginBottom: 18 },
   chipRow: { gap: 8, paddingBottom: 18 },
   equalRow: { flexDirection: 'row', gap: 8, marginBottom: 18 },
   chip: { minHeight: 46, borderRadius: 14, borderWidth: 1, borderColor: foco.colors.border, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
@@ -148,7 +152,7 @@ const styles = StyleSheet.create({
   stepButton: { width: 60, height: 58, alignItems: 'center', justifyContent: 'center' },
   stepSymbol: { color: foco.colors.text, fontSize: 25, fontWeight: '300' },
   stepValue: { flex: 1, alignItems: 'center' },
-  stepNumber: { color: foco.colors.text, fontSize: 20, fontWeight: '650', fontVariant: ['tabular-nums'] },
+  stepNumber: { color: foco.colors.text, fontSize: 20, fontWeight: '600', fontVariant: ['tabular-nums'] },
   stepLabel: { color: foco.colors.muted, fontSize: 11.5, marginTop: 1 },
   subtaskList: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: foco.colors.borderSoft, marginBottom: 18 },
   subtaskRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: foco.colors.borderSoft },
