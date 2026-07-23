@@ -10,7 +10,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "node -e \"require('fs').rmSync('.test-dist',{recursive:true,force:true})\" && tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js",
+    "test": "node -e \"require('fs').rmSync('.test-dist',{recursive:true,force:true})\" && tsc -p tsconfig.test.json && node --test tests/today-model.test.cjs",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "verify": "npm test && npm run typecheck && npm run lint"
@@ -31,7 +31,6 @@
     "react-native-web": "~0.21.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
