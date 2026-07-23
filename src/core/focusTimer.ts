@@ -35,6 +35,13 @@ export function getTimerSeconds(runtime: FocusRuntime, now = Date.now()) {
   return Math.max(0, runtime.baseSeconds - elapsed);
 }
 
+export function recomputeRuntime(runtime: FocusRuntime, now = Date.now()): FocusRuntime {
+  if (!runtime.running || runtime.mode === 'stopwatch') return runtime;
+  const remaining = getTimerSeconds(runtime, now);
+  if (remaining > 0) return runtime;
+  return { ...runtime, running: false, anchorMs: 0, baseSeconds: 0 };
+}
+
 export function startTimer(runtime: FocusRuntime, now = Date.now()): FocusRuntime {
   if (runtime.running) return runtime;
   return { ...runtime, running: true, anchorMs: now };
