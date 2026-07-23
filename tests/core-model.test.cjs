@@ -71,3 +71,21 @@ test('stopwatch, configuration and pomodoro phase transitions are deterministic'
   assert.equal(breakRuntime.phase, 'break');
   assert.equal(breakRuntime.baseSeconds, 5 * 60);
 });
+
+test('foreground recomputation stops an elapsed Pomodoro at zero', () => {
+  const configured = timer.configureTimer(timer.createFocusRuntime(), { focusSeconds: 60 });
+  const started = timer.startTimer(configured, NOW);
+  const restored = timer.recomputeRuntime(started, NOW + 65_000);
+
+  assert.equal(restored.running, false);
+  assert.equal(restored.baseSeconds, 0);
+  assert.equal(restored.anchorMs, 0);
+});
+
+test('foreground recomputation keeps a running stopwatch timestamp-based', () => {
+  const stopwatch = timer.startTimer(timer.setTimerMode(timer.createFocusRuntime(), 'stopwatch'), NOW);
+  const restored = timer.recomputeRuntime(stopwatch, NOW + 65_000);
+
+  assert.equal(restored.running, true);
+  assert.equal(timer.getTimerSeconds(restored, NOW + 65_000), 65);
+});
