@@ -1,5 +1,5 @@
 import type { PropsWithChildren, ReactNode } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FocoIcon } from './FocoIcon';
@@ -43,7 +43,7 @@ export function FocoSheet({ visible, title, subtitle, onClose, footer, children 
               <FocoIcon name="plus" size={23} color={foco.colors.muted} style={styles.closeIcon} />
             </Pressable>
           </View>
-          <View style={styles.body}>{children}</View>
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>{children}</ScrollView>
           {footer ? <View style={styles.footer}>{footer}</View> : null}
         </SafeAreaView>
       </KeyboardAvoidingView>
@@ -93,12 +93,12 @@ const styles = StyleSheet.create({
   handle: { width: 42, height: 4, borderRadius: 2, backgroundColor: '#484B52', alignSelf: 'center', marginBottom: 14 },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   headerCopy: { flex: 1, paddingRight: 12 },
-  title: { color: foco.colors.text, fontSize: 24, fontWeight: '650' },
+  title: { color: foco.colors.text, fontSize: 24, fontWeight: '600' },
   subtitle: { color: foco.colors.muted, fontSize: 14, lineHeight: 20, marginTop: 5 },
-  close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: foco.colors.panelStrong },
+  close: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 24, backgroundColor: foco.colors.panelStrong },
   closeIcon: { transform: [{ rotate: '45deg' }] },
-  body: { paddingTop: 22 },
-  footer: { flexDirection: 'row', gap: 10, paddingTop: 22, paddingBottom: 10 },
+  body: { paddingTop: 22, paddingBottom: 4 },
+  footer: { flexDirection: 'row', gap: 10, paddingTop: 18, paddingBottom: 10 },
   button: { minHeight: 52, flex: 1, borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   buttonPrimary: { backgroundColor: foco.colors.text },
   buttonSecondary: { backgroundColor: foco.colors.panelStrong, borderWidth: 1, borderColor: foco.colors.border },
