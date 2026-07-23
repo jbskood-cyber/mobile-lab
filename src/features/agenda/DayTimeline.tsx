@@ -35,7 +35,7 @@ export function DayTimeline({ state, day, onTask, onSlot }: {
 
   return (
     <View>
-      <View style={styles.summaryRow}>
+      <View style={[styles.summaryRow, { borderBottomColor: theme.colors.borderSoft }]}>
         <Summary label="Fijo" value={`${plan.scheduledMinutes}m`} color={theme.colors.text} />
         <Summary label="Flexible" value={`${plan.flexibleMinutes}m`} color={theme.colors.text} />
         <Summary label={plan.overloadMinutes > 0 ? 'Exceso' : 'Libre'} value={`${plan.overloadMinutes || plan.freeMinutes}m`} color={plan.overloadMinutes > 0 ? theme.colors.danger : theme.colors.success} />
@@ -80,14 +80,15 @@ export function DayTimeline({ state, day, onTask, onSlot }: {
 }
 
 function Summary({ label, value, color }: { label: string; value: string; color: string }) {
-  return <View style={styles.summary}><Text style={[styles.summaryValue, { color }]}>{value}</Text><Text style={styles.summaryLabel}>{label}</Text></View>;
+  const theme = useFocoTheme();
+  return <View style={styles.summary}><Text style={[styles.summaryValue, { color }]}>{value}</Text><Text style={[styles.summaryLabel, { color: theme.colors.muted }]}>{label}</Text></View>;
 }
 
 const styles = StyleSheet.create({
-  summaryRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#30333A', marginBottom: 6 },
+  summaryRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, marginBottom: 6 },
   summary: { flex: 1 },
   summaryValue: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, lineHeight: 18, fontVariant: ['tabular-nums'] },
-  summaryLabel: { color: '#7E828B', fontFamily: 'Manrope_400Regular', fontSize: 9.5, lineHeight: 12, marginTop: 1 },
+  summaryLabel: { fontFamily: 'Manrope_400Regular', fontSize: 9.5, lineHeight: 12, marginTop: 1 },
   timeline: { position: 'relative', borderBottomWidth: StyleSheet.hairlineWidth },
   hourRow: { position: 'absolute', left: 0, right: 0, height: 60 * MINUTE_HEIGHT, borderTopWidth: StyleSheet.hairlineWidth },
   hourLabel: { width: 46, paddingTop: 3, fontFamily: 'Manrope_400Regular', fontSize: 9.5, lineHeight: 12, fontVariant: ['tabular-nums'] },
