@@ -29,11 +29,13 @@ import {
 import { resolveHydratedState } from './hydration';
 
 const STORAGE_KEY = 'foco:state:v1';
+const TIMER_KEY = 'foco:timer:v1';
 
 type StoreValue = {
   state: FocoState;
   ready: true;
   storageError: string | null;
+  resetToken: number;
   addTask: (title: string, projectId?: string, priority?: TaskPriority) => void;
   updateTask: (taskId: string, patch: Partial<Pick<Task, 'title' | 'projectId' | 'priority' | 'inProgress' | 'favorite'>>) => void;
   toggleTask: (taskId: string) => void;
@@ -56,6 +58,7 @@ export function FocoStoreProvider({ children, fallback = null, onReady }: Provid
   const [state, setState] = useState<FocoState | null>(null);
   const [ready, setReady] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [resetToken, setResetToken] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -130,9 +133,13 @@ export function FocoStoreProvider({ children, fallback = null, onReady }: Provid
   const resetLocalData = useCallback(() => {
     const reset = createInitialState();
     setState(reset);
+    setResetToken((value) => value + 1);
     setStorageError(null);
-    void Storage.setItem(STORAGE_KEY, JSON.stringify(reset)).catch(() => {
-      setStorageError('FOCO se reinició en esta sesión, pero no pudo confirmar el guardado local.');
+    void Promise.all([
+      Storage.setItem(STORAGE_KEY, JSON.stringify(reset)),
+      Storage.removeItem(TIMER_KEY),
+    ]).catch(() => {
+      setStorageError('FOCO se reinició en esta sesión, pero no pudo confirmar todos los cambios locales.');
     });
   }, []);
 
@@ -140,6 +147,7 @@ export function FocoStoreProvider({ children, fallback = null, onReady }: Provid
     state,
     ready: true,
     storageError,
+    resetToken,
     addTask,
     updateTask,
     toggleTask,
@@ -153,6 +161,7 @@ export function FocoStoreProvider({ children, fallback = null, onReady }: Provid
     state,
     ready,
     storageError,
+    resetToken,
     addTask,
     updateTask,
     toggleTask,
