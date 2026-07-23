@@ -15,7 +15,7 @@ const routeMeta: Record<string, { label: string; icon: IconName }> = {
 export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 8) }]}> 
       <View style={styles.topLine} />
       <View style={styles.row}>
         {state.routes.map((route, index) => {
@@ -24,7 +24,7 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
           const options = descriptors[route.key]?.options;
           const onPress = () => {
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-            if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
+            if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
           };
           return (
             <Pressable
@@ -36,16 +36,9 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
               style={styles.item}
             >
               <View style={[styles.iconHalo, focused && styles.iconHaloActive]}>
-                <FocoIcon
-                  name={meta.icon}
-                  size={focused ? 24 : 23}
-                  color={focused ? foco.colors.text : foco.colors.inactive}
-                  strokeWidth={focused ? 2.1 : 1.65}
-                />
+                <FocoIcon name={meta.icon} size={focused ? 24 : 23} color={focused ? foco.colors.text : foco.colors.inactive} strokeWidth={focused ? 2.1 : 1.65} />
               </View>
-              <Text style={[styles.label, focused && styles.labelActive]} maxFontSizeMultiplier={1.1}>
-                {meta.label}
-              </Text>
+              <Text style={[styles.label, focused && styles.labelActive]} maxFontSizeMultiplier={1.1}>{meta.label}</Text>
             </Pressable>
           );
         })}
@@ -55,10 +48,7 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    backgroundColor: 'rgba(8,9,11,0.98)',
-    paddingTop: 8,
-  },
+  wrapper: { backgroundColor: 'rgba(8,9,11,0.98)', paddingTop: 8 },
   topLine: { height: 1, backgroundColor: foco.colors.borderSoft },
   row: { height: 72, flexDirection: 'row', alignItems: 'center' },
   item: { flex: 1, minHeight: 64, alignItems: 'center', justifyContent: 'center', gap: 4 },
