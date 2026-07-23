@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { normalizeIntegerDraft, parseOptionalInteger } = require('../.core-test-dist/formModel.js');
+const { normalizeIntegerDraft, parseOptionalInteger } = require('../.core-test-dist/ui/formModel.js');
 
 test('numeric drafts allow an empty intermediate editing state', () => {
   assert.equal(parseOptionalInteger('', 1, 90), null);
