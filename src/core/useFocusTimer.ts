@@ -2,6 +2,7 @@ import Storage from 'expo-sqlite/kv-store';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
+import { useFocoUI } from '@/src/ui/FocoUIContext';
 import { hapticImpact, hapticSelection, hapticSuccess, hapticWarning } from '@/src/ui/premium';
 import { useFocoStore } from './FocoStore';
 import {
@@ -41,6 +42,7 @@ function normalizeRuntime(value: unknown): FocusRuntime {
 
 export function useFocusTimer(projectId: string) {
   const { addSession } = useFocoStore();
+  const { setFocusImmersive } = useFocoUI();
   const [runtime, setRuntime] = useState<FocusRuntime>(createFocusRuntime);
   const [now, setNow] = useState(Date.now());
   const [ready, setReady] = useState(false);
@@ -69,6 +71,11 @@ export function useFocusTimer(projectId: string) {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    setFocusImmersive(runtime.running);
+    return () => setFocusImmersive(false);
+  }, [runtime.running, setFocusImmersive]);
 
   useEffect(() => {
     if (!ready) return;
