@@ -14,12 +14,19 @@ import { Keyboard } from 'react-native';
 import { createUIState, reduceUIState } from './uiState';
 
 type ScrollTarget = () => void;
+type UndoRequest = {
+  id: number;
+  message: string;
+  actionLabel: string;
+  onAction: () => void;
+};
 
 type FocoUIValue = {
   overlayCount: number;
   keyboardVisible: boolean;
   appMenuVisible: boolean;
   resetArmed: boolean;
+  undo: UndoRequest | null;
   openAppMenu: () => void;
   closeAppMenu: () => void;
   registerOverlay: () => void;
@@ -27,6 +34,9 @@ type FocoUIValue = {
   requestReset: () => void;
   cancelReset: () => void;
   completeReset: () => void;
+  showUndo: (message: string, onAction: () => void, actionLabel?: string) => void;
+  runUndo: () => void;
+  dismissUndo: () => void;
   registerScrollTarget: (key: string, target: ScrollTarget) => () => void;
   scrollToTop: (key: string) => void;
 };
@@ -37,6 +47,8 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(reduceUIState, undefined, createUIState);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [appMenuVisible, setAppMenuVisible] = useState(false);
+  const [undo, setUndo] = useState<UndoRequest | null>(null);
+  const undoId = useRef(0);
   const scrollTargets = useRef(new Map<string, ScrollTarget>());
 
   useEffect(() => {
@@ -47,6 +59,12 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
       hide.remove();
     };
   }, []);
+
+  useEffect(() => {
+    if (!undo) return;
+    const timeout = setTimeout(() => setUndo((current) => current?.id === undo.id ? null : current), 4500);
+    return () => clearTimeout(timeout);
+  }, [undo]);
 
   const openAppMenu = useCallback(() => {
     Keyboard.dismiss();
@@ -64,6 +82,20 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
   const cancelReset = useCallback(() => dispatch({ type: 'cancel-reset' }), []);
   const completeReset = useCallback(() => dispatch({ type: 'complete-reset' }), []);
 
+  const showUndo = useCallback((message: string, onAction: () => void, actionLabel = 'Deshacer') => {
+    undoId.current += 1;
+    setUndo({ id: undoId.current, message, onAction, actionLabel });
+  }, []);
+
+  const runUndo = useCallback(() => {
+    setUndo((current) => {
+      current?.onAction();
+      return null;
+    });
+  }, []);
+
+  const dismissUndo = useCallback(() => setUndo(null), []);
+
   const registerScrollTarget = useCallback((key: string, target: ScrollTarget) => {
     scrollTargets.current.set(key, target);
     return () => {
@@ -80,6 +112,7 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
     keyboardVisible,
     appMenuVisible,
     resetArmed: state.resetArmed,
+    undo,
     openAppMenu,
     closeAppMenu,
     registerOverlay,
@@ -87,6 +120,9 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
     requestReset,
     cancelReset,
     completeReset,
+    showUndo,
+    runUndo,
+    dismissUndo,
     registerScrollTarget,
     scrollToTop,
   }), [
@@ -94,6 +130,7 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
     state.resetArmed,
     keyboardVisible,
     appMenuVisible,
+    undo,
     openAppMenu,
     closeAppMenu,
     registerOverlay,
@@ -101,6 +138,9 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
     requestReset,
     cancelReset,
     completeReset,
+    showUndo,
+    runUndo,
+    dismissUndo,
     registerScrollTarget,
     scrollToTop,
   ]);
