@@ -41,7 +41,7 @@ export function FocoIcon({ name, size = 24, color = '#F7F7F8', strokeWidth = 1.8
       {name === 'bulb' && <><Path d="M8 15c-1.5-1.2-2.5-3-2.5-5A6.5 6.5 0 0 1 12 3.5 6.5 6.5 0 0 1 18.5 10c0 2-1 3.8-2.5 5l-1 1.5H9z" {...common}/><Line x1="9" y1="20" x2="15" y2="20" {...common}/></>}
       {name === 'chevron-right' && <Polyline points="9 5 16 12 9 19" {...common}/>} 
       {name === 'chevron-left' && <Polyline points="15 5 8 12 15 19" {...common}/>} 
-      {name === 'sliders' && <><Line x1="4" y1="7" x2="20" y2="7" {...common}/><Circle cx="9" cy="7" r="2" fill="#050607" {...common}/><Line x1="4" y1="12" x2="20" y2="12" {...common}/><Circle cx="15" cy="12" r="2" fill="#050607" {...common}/><Line x1="4" y1="17" x2="20" y2="17" {...common}/><Circle cx="11" cy="17" r="2" fill="#050607" {...common}/></>}
+      {name === 'sliders' && <><Line x1="4" y1="7" x2="20" y2="7" {...common}/><Circle cx="9" cy="7" r="2" {...common} fill="#050607"/><Line x1="4" y1="12" x2="20" y2="12" {...common}/><Circle cx="15" cy="12" r="2" {...common} fill="#050607"/><Line x1="4" y1="17" x2="20" y2="17" {...common}/><Circle cx="11" cy="17" r="2" {...common} fill="#050607"/></>}
       {name === 'pause' && <><Rect x="7" y="5" width="3.5" height="14" rx="1" fill={color}/><Rect x="13.5" y="5" width="3.5" height="14" rx="1" fill={color}/></>}
       {name === 'stop' && <Rect x="7" y="7" width="10" height="10" rx="1.5" fill={color}/>} 
       {name === 'previous' && <><Line x1="7" y1="6" x2="7" y2="18" {...common}/><Path d="m18 6-8 6 8 6z" {...common}/></>}
