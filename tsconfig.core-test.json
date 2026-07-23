@@ -16,6 +16,7 @@
     "src/core/focusTimer.ts",
     "src/core/hydration.ts",
     "src/ui/uiState.ts",
-    "src/ui/formModel.ts"
+    "src/ui/formModel.ts",
+    "src/features/stats/statsModel.ts"
   ]
 }
