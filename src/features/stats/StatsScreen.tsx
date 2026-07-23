@@ -8,22 +8,13 @@ import { FocoScreen, Surface } from '@/src/ui/FocoShell';
 import { ProgressRing } from '@/src/ui/ProgressRing';
 import { foco } from '@/src/ui/focoTheme';
 import { hapticSelection, pressedStyle } from '@/src/ui/premium';
+import { formatWeekLabel } from './statsModel';
 
 type Tab = 'Resumen' | 'Pomodoro' | 'Tareas';
 type Distribution = { label: string; seconds: number; color: string };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-
-function formatWeekLabel(start: number, end: number) {
-  const first = new Date(start);
-  const last = new Date(end - 1);
-  if (first.getMonth() === last.getMonth()) {
-    return `${first.getDate()} – ${last.getDate()} ${monthNames[first.getMonth()]} ${last.getFullYear()}`;
-  }
-  return `${first.getDate()} ${monthNames[first.getMonth()]} – ${last.getDate()} ${monthNames[last.getMonth()]} ${last.getFullYear()}`;
-}
 
 function startOfDay(timestamp: number) {
   const date = new Date(timestamp);
@@ -86,26 +77,27 @@ export function StatsScreen() {
   const completedTotal = state.tasks.filter((task) => task.completed).length;
   const totalTasks = state.tasks.length;
   const taskCompletion = totalTasks === 0 ? 0 : completedTotal / totalTasks;
-  const sessionAverage = selectedSessions.length === 0 ? 0 : selectedSessions.reduce((sum, session) => sum + session.durationSec, 0) / selectedSessions.length;
+  const selectedTotal = selectedSessions.reduce((sum, session) => sum + session.durationSec, 0);
+  const sessionAverage = selectedSessions.length === 0 ? 0 : selectedTotal / selectedSessions.length;
   const dailyGoal = 2 * 60 * 60;
-  const goalRatio = Math.min(1, selectedSessions.reduce((sum, session) => sum + session.durationSec, 0) / (7 * dailyGoal));
+  const goalRatio = Math.min(1, selectedTotal / (7 * dailyGoal));
 
   const summary = tab === 'Tareas'
     ? [
       { icon: 'check' as const, value: String(week.completedTasks), label: 'Completadas' },
       { icon: 'list' as const, value: String(openTasks), label: 'Pendientes' },
-      { icon: 'target' as const, value: `${Math.round(taskCompletion * 100)}%`, label: 'Progreso total' },
+      { icon: 'target' as const, value: `${Math.round(taskCompletion * 100)}%`, label: 'Progreso' },
     ]
     : tab === 'Pomodoro'
       ? [
-        { icon: 'clock' as const, value: formatDuration(selectedSessions.reduce((sum, session) => sum + session.durationSec, 0), true), label: 'Tiempo Pomodoro' },
+        { icon: 'clock' as const, value: formatDuration(selectedTotal, true), label: 'Pomodoro' },
         { icon: 'target' as const, value: String(selectedSessions.length), label: 'Ciclos' },
         { icon: 'check' as const, value: formatDuration(sessionAverage, true), label: 'Promedio' },
       ]
       : [
         { icon: 'clock' as const, value: formatDuration(week.totalSeconds, true), label: 'Tiempo total' },
-        { icon: 'target' as const, value: formatDuration(week.totalSeconds / 7, true), label: 'Promedio diario' },
-        { icon: 'check' as const, value: `${Math.round(goalRatio * 100)}%`, label: 'Objetivo semanal' },
+        { icon: 'target' as const, value: formatDuration(week.totalSeconds / 7, true), label: 'Promedio' },
+        { icon: 'check' as const, value: `${Math.round(goalRatio * 100)}%`, label: 'Objetivo' },
       ];
 
   const heatmap = useMemo(() => {
@@ -149,7 +141,13 @@ export function StatsScreen() {
   const hasWeekData = total > 0;
 
   return (
-    <FocoScreen title="Estadísticas" rightIcon="calendar">
+    <FocoScreen
+      title="Estadísticas"
+      screenKey="stats"
+      rightIcon="calendar"
+      rightAccessibilityLabel="Volver a la semana actual"
+      onRightPress={() => { setWeekOffset(0); hapticSelection(); }}
+    >
       <View style={styles.tabs}>
         {(['Resumen', 'Pomodoro', 'Tareas'] as Tab[]).map((item) => {
           const selected = item === tab;
@@ -166,7 +164,7 @@ export function StatsScreen() {
         <Pressable accessibilityRole="button" accessibilityLabel="Semana anterior" onPress={() => { setWeekOffset((value) => value - 1); hapticSelection(); }} style={({ pressed }) => [styles.arrowButton, pressed && pressedStyle]}>
           <FocoIcon name="chevron-left" size={20} color={foco.colors.text} />
         </Pressable>
-        <Text style={styles.weekText}>{formatWeekLabel(week.start, week.end)}</Text>
+        <Text style={styles.weekText} numberOfLines={1} adjustsFontSizeToFit>{formatWeekLabel(week.start, week.end)}</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Semana siguiente" onPress={() => { setWeekOffset((value) => value + 1); hapticSelection(); }} style={({ pressed }) => [styles.arrowButton, pressed && pressedStyle]}>
           <FocoIcon name="chevron-right" size={20} color={foco.colors.text} />
         </Pressable>
@@ -178,19 +176,19 @@ export function StatsScreen() {
 
       {!hasWeekData ? (
         <Surface style={styles.emptyState}>
-          <FocoIcon name={tab === 'Tareas' ? 'check' : 'clock'} size={30} color={foco.colors.text} />
+          <FocoIcon name={tab === 'Tareas' ? 'check' : 'clock'} size={28} color={foco.colors.text} />
           <Text style={styles.emptyTitle}>Semana sin actividad</Text>
-          <Text style={styles.emptyCopy}>{tab === 'Tareas' ? 'Completa tareas para construir tu historial.' : 'Las sesiones que registres en Enfoque aparecerán aquí.'}</Text>
+          <Text style={styles.emptyCopy}>{tab === 'Tareas' ? 'Completa una tarea para empezar.' : 'Registra una sesión en Enfoque.'}</Text>
         </Surface>
       ) : null}
 
       <Surface style={styles.heatmapCard}>
         <Text style={styles.cardTitle}>Mapa de actividad</Text>
-        <View style={styles.months}><Text style={styles.month}>Hace 18 sem</Text><Text style={styles.month}>Hace 9 sem</Text><Text style={styles.month}>Ahora</Text></View>
-        <View style={styles.heatmapBody}>
+        <View style={styles.months}><Text style={styles.month}>18 sem</Text><Text style={styles.month}>9 sem</Text><Text style={styles.month}>Ahora</Text></View>
+        <View style={styles.heatmapBody} accessibilityLabel="Mapa de actividad de las últimas dieciocho semanas">
           <View style={styles.dayLetters}>{['L','M','X','J','V','S','D'].map((day) => <Text key={day} style={styles.dayLetter}>{day}</Text>)}</View>
-          <View style={styles.grid}>
-            {heatmap.map((level, index) => <View key={`${index}-${level}`} accessibilityLabel={`Actividad nivel ${level} de 4`} style={[styles.cell, level === 1 && styles.cell1, level === 2 && styles.cell2, level === 3 && styles.cell3, level === 4 && styles.cell4]} />)}
+          <View style={styles.grid} importantForAccessibility="no-hide-descendants">
+            {heatmap.map((level, index) => <View key={`${index}-${level}`} style={[styles.cell, level === 1 && styles.cell1, level === 2 && styles.cell2, level === 3 && styles.cell3, level === 4 && styles.cell4]} />)}
           </View>
         </View>
         <View style={styles.legend}><Text style={styles.legendText}>Menos</Text>{[0,1,2,3,4].map((level) => <View key={level} style={[styles.legendCell, level === 1 && styles.cell1, level === 2 && styles.cell2, level === 3 && styles.cell3, level === 4 && styles.cell4]} />)}<Text style={styles.legendText}>Más</Text></View>
@@ -204,8 +202,8 @@ export function StatsScreen() {
           </View>
           <View style={styles.barsArea}>
             {chartValues.map((value, index) => (
-              <View key={days[index]} style={styles.barSlot}>
-                <View accessibilityLabel={`${days[index]}: ${tab === 'Tareas' ? `${value} tareas` : formatDuration(value, true)}`} style={[styles.bar, { height: value === 0 ? 2 : Math.max(8, (value / maximum) * 122) }]} />
+              <View key={days[index]} style={styles.barSlot} accessibilityLabel={`${days[index]}: ${tab === 'Tareas' ? `${value} tareas` : formatDuration(value, true)}`}>
+                <View style={[styles.bar, { height: value === 0 ? 2 : Math.max(8, (value / maximum) * 112) }]} />
                 <Text style={styles.dayName}>{days[index]}</Text>
               </View>
             ))}
@@ -214,9 +212,9 @@ export function StatsScreen() {
       </Surface>
 
       <Surface style={styles.distributionCard}>
-        <View style={styles.cardHeader}><Text style={styles.cardTitle}>{tab === 'Tareas' ? 'Distribución por prioridad' : 'Distribución por enfoque'}</Text><Text style={styles.selector}>{tab === 'Tareas' ? 'Por tareas' : 'Por tiempo'}</Text></View>
+        <View style={styles.cardHeader}><Text style={styles.cardTitle}>{tab === 'Tareas' ? 'Por prioridad' : 'Por enfoque'}</Text><Text style={styles.selector}>{tab === 'Tareas' ? 'Tareas' : 'Tiempo'}</Text></View>
         <View style={styles.distributionBody}>
-          <ProgressRing size={112} strokeWidth={15} progress={primaryShare} color="#E7E7E8" trackColor="#34373E">
+          <ProgressRing size={102} strokeWidth={14} progress={primaryShare} color="#E7E7E8" trackColor="#34373E">
             <Text style={styles.donutValue}>{Math.round(primaryShare * 100)}%</Text>
           </ProgressRing>
           <View style={styles.legendList}>
@@ -233,61 +231,61 @@ export function StatsScreen() {
 }
 
 function Summary({ icon, value, label }: { icon: 'clock' | 'target' | 'check' | 'list'; value: string; label: string }) {
-  return <Surface style={styles.summaryCard}><FocoIcon name={icon} size={31} color={foco.colors.text} /><Text style={styles.summaryValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text><Text style={styles.summaryLabel}>{label}</Text></Surface>;
+  return <Surface style={styles.summaryCard}><FocoIcon name={icon} size={27} color={foco.colors.text} /><Text style={styles.summaryValue} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={1.08}>{value}</Text><Text style={styles.summaryLabel} numberOfLines={1}>{label}</Text></Surface>;
 }
 
 function LegendRow({ color, label, value }: { color: string; label: string; value: string }) {
-  return <View style={styles.legendRow}><View style={[styles.legendDot,{ backgroundColor: color }]} /><Text style={styles.legendLabel}>{label}</Text><Text style={styles.legendValue}>{value}</Text></View>;
+  return <View style={styles.legendRow}><View style={[styles.legendDot,{ backgroundColor: color }]} /><Text style={styles.legendLabel}>{label}</Text><Text style={styles.legendValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text></View>;
 }
 
 const styles = StyleSheet.create({
-  tabs: { marginTop: 18, height: 52, flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: foco.colors.borderSoft },
+  tabs: { marginTop: 16, height: 50, flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: foco.colors.borderSoft },
   tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  tabText: { color: foco.colors.muted, fontSize: 16 },
+  tabText: { color: foco.colors.muted, fontSize: 15.5 },
   tabTextSelected: { color: foco.colors.text, fontWeight: '600' },
-  tabUnderline: { position: 'absolute', bottom: -1, width: '85%', height: 2, borderRadius: 2, backgroundColor: foco.colors.text },
-  weekPicker: { minHeight: 54, marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 },
+  tabUnderline: { position: 'absolute', bottom: -1, width: '82%', height: 2, borderRadius: 2, backgroundColor: foco.colors.text },
+  weekPicker: { minHeight: 52, marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 5 },
   arrowButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
-  weekText: { color: foco.colors.text, fontSize: 16, fontWeight: '500', fontVariant: ['tabular-nums'] },
-  summaryRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  summaryCard: { flex: 1, minHeight: 132, padding: 15, justifyContent: 'space-between' },
-  summaryValue: { color: foco.colors.text, fontSize: 19, fontWeight: '600', marginTop: 12, fontVariant: ['tabular-nums'] },
-  summaryLabel: { color: foco.colors.muted, fontSize: 12, marginTop: 6 },
-  emptyState: { marginTop: 14, minHeight: 142, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  emptyTitle: { color: foco.colors.text, fontSize: 17, fontWeight: '600', marginTop: 12 },
-  emptyCopy: { color: foco.colors.muted, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 6 },
-  heatmapCard: { marginTop: 14, padding: 16 },
-  cardTitle: { color: foco.colors.text, fontSize: 16, fontWeight: '600' },
-  months: { flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 30, marginTop: 9 },
-  month: { color: foco.colors.muted, fontSize: 11.5 },
+  weekText: { flex: 1, minWidth: 0, color: foco.colors.text, fontSize: 15.5, fontWeight: '500', textAlign: 'center', fontVariant: ['tabular-nums'] },
+  summaryRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  summaryCard: { flex: 1, minWidth: 0, minHeight: 116, padding: 13, justifyContent: 'space-between' },
+  summaryValue: { color: foco.colors.text, fontSize: 18, fontWeight: '600', marginTop: 10, fontVariant: ['tabular-nums'] },
+  summaryLabel: { color: foco.colors.muted, fontSize: 11.5, marginTop: 5 },
+  emptyState: { marginTop: 12, minHeight: 126, alignItems: 'center', justifyContent: 'center', padding: 17 },
+  emptyTitle: { color: foco.colors.text, fontSize: 16, fontWeight: '600', marginTop: 9 },
+  emptyCopy: { color: foco.colors.muted, fontSize: 12.5, lineHeight: 18, textAlign: 'center', marginTop: 4 },
+  heatmapCard: { marginTop: 12, padding: 14, overflow: 'hidden' },
+  cardTitle: { flexShrink: 1, color: foco.colors.text, fontSize: 15.5, fontWeight: '600' },
+  months: { flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 26, marginTop: 8 },
+  month: { color: foco.colors.muted, fontSize: 10.5 },
   heatmapBody: { flexDirection: 'row', marginTop: 7 },
-  dayLetters: { width: 24, gap: 5 },
-  dayLetter: { height: 13, color: foco.colors.muted, fontSize: 10, lineHeight: 13 },
-  grid: { flex: 1, flexDirection: 'column', flexWrap: 'wrap', height: 121, gap: 4, alignContent: 'space-between' },
-  cell: { width: 13, height: 13, borderRadius: 3, backgroundColor: '#202329' },
+  dayLetters: { width: 22, gap: 3 },
+  dayLetter: { height: 11, color: foco.colors.muted, fontSize: 9, lineHeight: 11 },
+  grid: { flex: 1, minWidth: 0, flexDirection: 'column', flexWrap: 'wrap', height: 95, gap: 3, alignContent: 'space-between' },
+  cell: { width: 11, height: 11, borderRadius: 2.5, backgroundColor: '#202329' },
   cell1: { backgroundColor: '#34373D' },
   cell2: { backgroundColor: '#666A71' },
   cell3: { backgroundColor: '#B5B7BB' },
   cell4: { backgroundColor: '#F1F1F2' },
-  legend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10 },
-  legendText: { color: foco.colors.muted, fontSize: 11 },
-  legendCell: { width: 12, height: 12, borderRadius: 3, backgroundColor: '#202329' },
-  chartCard: { marginTop: 14, padding: 16 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  selector: { color: foco.colors.muted, fontSize: 13.5 },
-  chartArea: { height: 184, flexDirection: 'row', marginTop: 12 },
-  axisLabels: { width: 42, justifyContent: 'space-between', paddingBottom: 22 },
-  axisText: { color: foco.colors.muted, fontSize: 10 },
-  barsArea: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: foco.colors.border },
-  barSlot: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'flex-end' },
-  bar: { width: 24, maxHeight: 122, borderRadius: 3, backgroundColor: '#E7E7E8' },
-  dayName: { color: foco.colors.muted, fontSize: 11.5, marginTop: 8, marginBottom: -20 },
-  distributionCard: { marginTop: 14, padding: 16 },
-  distributionBody: { flexDirection: 'row', alignItems: 'center', marginTop: 14, gap: 16 },
-  donutValue: { color: foco.colors.text, fontSize: 17, fontWeight: '600' },
-  legendList: { flex: 1, gap: 12 },
-  legendRow: { flexDirection: 'row', alignItems: 'center' },
-  legendDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
-  legendLabel: { color: foco.colors.muted, fontSize: 13.5, flex: 1 },
-  legendValue: { color: foco.colors.text, fontSize: 12.5, fontVariant: ['tabular-nums'] },
+  legend: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 9 },
+  legendText: { color: foco.colors.muted, fontSize: 10.5 },
+  legendCell: { width: 11, height: 11, borderRadius: 2.5, backgroundColor: '#202329' },
+  chartCard: { marginTop: 12, padding: 14 },
+  cardHeader: { minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  selector: { color: foco.colors.muted, fontSize: 12.5 },
+  chartArea: { height: 172, flexDirection: 'row', marginTop: 10 },
+  axisLabels: { width: 38, justifyContent: 'space-between', paddingBottom: 20 },
+  axisText: { color: foco.colors.muted, fontSize: 9.5, fontVariant: ['tabular-nums'] },
+  barsArea: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: foco.colors.border },
+  barSlot: { flex: 1, minWidth: 0, height: '100%', alignItems: 'center', justifyContent: 'flex-end' },
+  bar: { width: 20, maxWidth: '70%', maxHeight: 112, borderRadius: 3, backgroundColor: '#E7E7E8' },
+  dayName: { color: foco.colors.muted, fontSize: 10.5, marginTop: 7, marginBottom: -18 },
+  distributionCard: { marginTop: 12, padding: 14 },
+  distributionBody: { minWidth: 0, flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 14 },
+  donutValue: { color: foco.colors.text, fontSize: 16, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  legendList: { flex: 1, minWidth: 0, gap: 10 },
+  legendRow: { minWidth: 0, flexDirection: 'row', alignItems: 'center' },
+  legendDot: { width: 9, height: 9, borderRadius: 5, marginRight: 7 },
+  legendLabel: { color: foco.colors.muted, fontSize: 12.5, flex: 1 },
+  legendValue: { flexShrink: 1, color: foco.colors.text, fontSize: 11.5, textAlign: 'right', fontVariant: ['tabular-nums'] },
 });
