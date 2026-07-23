@@ -1,21 +1,28 @@
-# Mobile Lab
+# Mobile Lab — FOCO
 
-Laboratorio móvil para construir **FOCO**, una aplicación de productividad y concentración para Android y, posteriormente, iOS.
+Aplicación móvil de productividad y concentración construida con React Native y Expo para Android y, posteriormente, iOS.
 
 ## Estado actual
 
-La base técnica está inicializada. La pantalla temporal confirma que React Native, Expo Router y Expo Go funcionan antes de construir las pantallas definitivas.
+FOCO ya cuenta con su primera base de producto:
+
+- sistema visual graphite monocromático;
+- navegación inferior entre Hoy, Proyectos, Enfoque y Estadísticas;
+- pantalla Hoy interactiva;
+- creación rápida de tareas en memoria;
+- actualización inmediata de tareas completadas y métricas;
+- rutas preparadas para los siguientes módulos.
+
+La persistencia local, el Pomodoro real y las estadísticas completas se incorporarán en bloques posteriores.
 
 ## Stack
 
-- React Native
+- React Native 0.81
 - Expo SDK 54
 - TypeScript estricto
 - Expo Router
 - Expo Go como visor inicial
 - GitHub como fuente única de verdad
-
-SDK 54 se mantiene temporalmente porque Expo lo recomienda para probar con Expo Go en un teléfono físico durante la transición actual a SDK 57.
 
 ## Requisitos
 
@@ -23,7 +30,7 @@ SDK 54 se mantiene temporalmente porque Expo lo recomienda para probar con Expo 
 - npm
 - Git
 - Expo Go instalado en Android
-- Computadora y teléfono conectados a la misma red Wi-Fi
+- Computadora y teléfono con acceso a la misma red o al túnel de Expo
 
 ## Instalación
 
@@ -40,10 +47,10 @@ npm run start:lan
 ```
 
 1. Espera a que Metro muestre el código QR.
-2. Abre Expo Go en tu Samsung.
+2. Abre Expo Go en el Samsung.
 3. Pulsa **Scan QR code**.
 4. Escanea el código.
-5. Confirma que aparezcan “Mobile Lab” y “Entorno móvil funcionando”.
+5. Mantén la terminal abierta durante la revisión.
 
 ### Si la conexión LAN falla
 
@@ -51,31 +58,31 @@ npm run start:lan
 npm run start:tunnel
 ```
 
-El túnel puede tardar más, pero evita muchos bloqueos causados por la red local o el firewall.
+El túnel evita muchos bloqueos causados por el router o el firewall de Windows.
 
 ## Verificaciones
 
 ```bash
+npm test
 npm run typecheck
 npm run lint
 npx expo-doctor@latest
 npx expo export --platform android
 ```
 
-## Flujo oficial
+## Flujo de trabajo
 
-- **ChatGPT:** guía el producto, define arquitectura y controla el progreso.
-- **Constructor en ChatGPT:** implementa y publica cuando dispone de capacidad.
+- **ChatGPT:** guía el producto, define arquitectura, implementa bloques autorizados y controla el progreso.
 - **GitHub:** fuente única de verdad del código.
-- **Entorno local:** ejecuta Metro y permite validar en el teléfono.
+- **Entorno local:** baja la rama aprobada, ejecuta Metro y permite validar en el teléfono.
 - **Expo Go:** visor inicial en el dispositivo físico.
 
 ## Política de ramas
 
-- `main`: versión estable y validada.
-- `feature/*`: implementación aislada de futuros bloques.
+- `main`: versión estable y aprobada.
+- `feature/*`: trabajo aislado de cada bloque.
 - No usar `force push`.
-- No integrar una función sin typecheck, lint y validación disponible.
+- No fusionar sin pruebas técnicas y revisión disponible en teléfono.
 
 ## Costos
 
