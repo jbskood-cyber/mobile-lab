@@ -6,7 +6,7 @@ import { useFocoStore } from '@/src/core/FocoStore';
 import { formatDuration, startOfLocalDay, type FocusMode, type Task } from '@/src/core/model';
 import { useFocusTimer } from '@/src/core/useFocusTimer';
 import { FocusKeepAwake } from '@/src/platform/FocusKeepAwake';
-import { FocoIcon } from '@/src/ui/FocoIcon';
+import { FocoIcon, type IconName } from '@/src/ui/FocoIcon';
 import { FocoScreen } from '@/src/ui/FocoShell';
 import { FieldLabel, FocoSheet, SheetButton } from '@/src/ui/FocoSheet';
 import { ProgressRing } from '@/src/ui/ProgressRing';
@@ -16,16 +16,14 @@ import { hapticSelection, pressedStyle } from '@/src/ui/premium';
 
 function clockLabel(seconds: number) {
   const safe = Math.max(0, Math.round(seconds));
-  const minutes = Math.floor(safe / 60);
-  const remainder = safe % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+  return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
 }
 
 export function FocusScreen() {
   const params = useLocalSearchParams<{ taskId?: string; projectId?: string }>();
   const { state } = useFocoStore();
   const activeProjects = useMemo(() => state.projects.filter((project) => !project.archived), [state.projects]);
-  const initialTask = params.taskId ? state.tasks.find((task) => task.id === params.taskId && !task.completed) : undefined;
+  const initialTask = params.taskId ? state.tasks.find((item) => item.id === params.taskId && !item.completed) : undefined;
   const initialProjectId = initialTask?.projectId ?? (params.projectId && activeProjects.some((project) => project.id === params.projectId) ? params.projectId : activeProjects[0]?.id ?? 'personal');
   const [projectId, setProjectId] = useState(initialProjectId);
   const [taskId, setTaskId] = useState<string | undefined>(initialTask?.id);
@@ -39,10 +37,13 @@ export function FocusScreen() {
   const [longBreakDraft, setLongBreakDraft] = useState('20');
   const [longEveryDraft, setLongEveryDraft] = useState('4');
   const [cyclesDraft, setCyclesDraft] = useState('3');
+  const [notifyDraft, setNotifyDraft] = useState('1');
   const [autoBreaks, setAutoBreaks] = useState(false);
   const [autoFocus, setAutoFocus] = useState(false);
   const [continuous, setContinuous] = useState(false);
   const [keepAwake, setKeepAwake] = useState(true);
+  const [vibration, setVibration] = useState(true);
+  const [sound, setSound] = useState(true);
 
   useEffect(() => {
     if (initialTask) {
@@ -62,13 +63,7 @@ export function FocusScreen() {
   const taskSessions = task ? state.sessions.filter((session) => session.taskId === task.id && session.phase === 'focus') : [];
   const taskPomodoros = taskSessions.filter((session) => session.mode === 'pomodoro' && session.completed).length;
 
-  const phaseLabel = timer.runtime.mode === 'stopwatch'
-    ? 'Cronómetro'
-    : timer.runtime.phase === 'longBreak'
-      ? 'Descanso largo'
-      : timer.runtime.phase === 'shortBreak'
-        ? 'Descanso'
-        : 'Enfoque';
+  const phaseLabel = timer.runtime.mode === 'stopwatch' ? 'Cronómetro' : timer.runtime.phase === 'longBreak' ? 'Descanso largo' : timer.runtime.phase === 'shortBreak' ? 'Descanso' : 'Enfoque';
 
   const openSettings = () => {
     const preferences = timer.preferences;
@@ -77,10 +72,13 @@ export function FocusScreen() {
     setLongBreakDraft(String(preferences.longBreakMinutes));
     setLongEveryDraft(String(preferences.longBreakEvery));
     setCyclesDraft(String(preferences.targetCycles));
+    setNotifyDraft(String(preferences.notifyBeforeEndMinutes));
     setAutoBreaks(preferences.autoStartBreaks);
     setAutoFocus(preferences.autoStartFocus);
     setContinuous(preferences.continuousMode);
     setKeepAwake(preferences.keepAwake);
+    setVibration(preferences.vibrationEnabled);
+    setSound(preferences.soundEnabled);
     setSettingsOpen(true);
     hapticSelection();
   };
@@ -90,10 +88,11 @@ export function FocusScreen() {
   const longBreakMinutes = parseOptionalInteger(longBreakDraft, 1, 90);
   const longEvery = parseOptionalInteger(longEveryDraft, 1, 12);
   const targetCycles = parseOptionalInteger(cyclesDraft, 1, 12);
-  const settingsValid = focusMinutes !== null && shortBreakMinutes !== null && longBreakMinutes !== null && longEvery !== null && targetCycles !== null;
+  const notifyBeforeEndMinutes = parseOptionalInteger(notifyDraft, 0, 30);
+  const settingsValid = [focusMinutes, shortBreakMinutes, longBreakMinutes, longEvery, targetCycles, notifyBeforeEndMinutes].every((value) => value !== null);
 
   const saveSettings = () => {
-    if (!settingsValid || focusMinutes === null || shortBreakMinutes === null || longBreakMinutes === null || longEvery === null || targetCycles === null) return;
+    if (focusMinutes === null || shortBreakMinutes === null || longBreakMinutes === null || longEvery === null || targetCycles === null || notifyBeforeEndMinutes === null) return;
     timer.configure({
       focusSeconds: focusMinutes * 60,
       shortBreakSeconds: shortBreakMinutes * 60,
@@ -113,10 +112,18 @@ export function FocusScreen() {
       autoStartFocus: autoFocus,
       continuousMode: continuous,
       keepAwake,
+      vibrationEnabled: vibration,
+      soundEnabled: sound,
+      notifyBeforeEndMinutes,
     });
     setSettingsOpen(false);
   };
 
+  const selectProject = (nextProjectId: string) => {
+    setProjectId(nextProjectId);
+    setTaskId(undefined);
+    timer.selectContext(nextProjectId, undefined);
+  };
   const selectTask = (nextTask?: Task) => {
     const nextProjectId = nextTask?.projectId ?? projectId;
     setProjectId(nextProjectId);
@@ -140,18 +147,14 @@ export function FocusScreen() {
         </View>
 
         <Pressable accessibilityRole="button" accessibilityLabel="Elegir tarea o proyecto" disabled={timer.runtime.running} onPress={() => setContextOpen(true)} style={({ pressed }) => [styles.context, pressed && pressedStyle]}>
-          <View style={styles.contextIcon}><FocoIcon name={task ? 'checklist' : (project?.icon ?? 'folder')} size={22} color={foco.colors.text} /></View>
+          <View style={styles.contextIcon}><FocoIcon name={(task ? 'checklist' : project?.icon ?? 'folder') as IconName} size={22} color={foco.colors.text} /></View>
           <View style={styles.contextCopy}><Text style={styles.contextTitle} numberOfLines={1}>{task?.title ?? project?.name ?? 'Sin proyecto'}</Text><Text style={styles.contextMeta}>{task ? `${project?.name} · ${taskPomodoros}/${task.estimatedPomodoros} pomodoros` : 'Sesión libre del proyecto'}</Text></View>
           <FocoIcon name="chevron-down" size={17} color={foco.colors.muted} />
         </Pressable>
 
         <View style={styles.timerWrap}>
           <ProgressRing size={264} strokeWidth={12} progress={timer.progress} color={foco.colors.white} trackColor="#292C32" glow>
-            <View style={styles.timerCopy} accessibilityLiveRegion="polite">
-              <Text style={styles.phase}>{phaseLabel}</Text>
-              <Text style={styles.timer} maxFontSizeMultiplier={1.03}>{timer.ready ? clockLabel(timer.seconds) : '··:··'}</Text>
-              <Text style={styles.cycle}>{timer.runtime.mode === 'pomodoro' ? `Ciclo ${timer.runtime.currentCycle} de ${timer.runtime.targetCycles}` : 'Tiempo acumulado'}</Text>
-            </View>
+            <View style={styles.timerCopy} accessibilityLiveRegion="polite"><Text style={styles.phase}>{phaseLabel}</Text><Text style={styles.timer} maxFontSizeMultiplier={1.03}>{timer.ready ? clockLabel(timer.seconds) : '··:··'}</Text><Text style={styles.cycle}>{timer.runtime.mode === 'pomodoro' ? `Ciclo ${timer.runtime.currentCycle} de ${timer.runtime.targetCycles}` : 'Tiempo acumulado'}</Text></View>
           </ProgressRing>
         </View>
 
@@ -162,21 +165,17 @@ export function FocusScreen() {
         </View>
 
         {timer.message ? <View style={[styles.message, timer.message.tone === 'success' && styles.messageSuccess, timer.message.tone === 'warning' && styles.messageWarning]}><Text style={styles.messageText}>{timer.message.text}</Text></View> : null}
-
-        <View style={styles.sessionSummary}>
-          <Summary value={`${pomodorosToday}/${timer.preferences.targetCycles}`} label="Pomodoros hoy" />
-          <Summary value={formatDuration(focusToday, true)} label="Tiempo hoy" />
-          <Summary value={`${Math.round(taskProgress * 100)}%`} label={task ? 'Tarea' : 'Meta diaria'} />
-        </View>
+        <View style={styles.sessionSummary}><Summary value={`${pomodorosToday}/${timer.preferences.targetCycles}`} label="Pomodoros hoy" /><Summary value={formatDuration(focusToday, true)} label="Tiempo hoy" /><Summary value={`${Math.round(taskProgress * 100)}%`} label={task ? 'Tarea' : 'Meta diaria'} /></View>
       </FocoScreen>
 
       <FocoSheet visible={contextOpen} title="Enfocarse en" subtitle="Vincula la sesión para medir progreso real." onClose={() => setContextOpen(false)}>
+        <FieldLabel>PROYECTO</FieldLabel>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectChoices}>
+          {activeProjects.map((item) => <Pressable key={item.id} onPress={() => selectProject(item.id)} style={({ pressed }) => [styles.projectChoice, projectId === item.id && styles.projectChoiceActive, pressed && pressedStyle]}><Text style={[styles.projectChoiceText, projectId === item.id && styles.optionTextActive]}>{item.name}</Text></Pressable>)}
+        </ScrollView>
+        <FieldLabel>TAREA</FieldLabel>
         <Pressable onPress={() => selectTask(undefined)} style={({ pressed }) => [styles.contextOption, !task && styles.contextOptionActive, pressed && pressedStyle]}><FocoIcon name="folder" size={21} color={!task ? foco.colors.bg : foco.colors.text} /><View style={styles.optionCopy}><Text style={[styles.optionTitle, !task && styles.optionTextActive]}>{project?.name ?? 'Proyecto'}</Text><Text style={[styles.optionMeta, !task && styles.optionTextActive]}>Sesión libre</Text></View>{!task ? <FocoIcon name="check" size={18} color={foco.colors.bg} /> : null}</Pressable>
-        {openTasks.map((item) => (
-          <Pressable key={item.id} onPress={() => selectTask(item)} style={({ pressed }) => [styles.contextOption, task?.id === item.id && styles.contextOptionActive, pressed && pressedStyle]}>
-            <FocoIcon name="checklist" size={21} color={task?.id === item.id ? foco.colors.bg : foco.colors.text} /><View style={styles.optionCopy}><Text style={[styles.optionTitle, task?.id === item.id && styles.optionTextActive]} numberOfLines={1}>{item.title}</Text><Text style={[styles.optionMeta, task?.id === item.id && styles.optionTextActive]}>{item.estimatedPomodoros} pomodoros estimados</Text></View>{task?.id === item.id ? <FocoIcon name="check" size={18} color={foco.colors.bg} /> : null}
-          </Pressable>
-        ))}
+        {openTasks.map((item) => <Pressable key={item.id} onPress={() => selectTask(item)} style={({ pressed }) => [styles.contextOption, task?.id === item.id && styles.contextOptionActive, pressed && pressedStyle]}><FocoIcon name="checklist" size={21} color={task?.id === item.id ? foco.colors.bg : foco.colors.text} /><View style={styles.optionCopy}><Text style={[styles.optionTitle, task?.id === item.id && styles.optionTextActive]} numberOfLines={1}>{item.title}</Text><Text style={[styles.optionMeta, task?.id === item.id && styles.optionTextActive]}>{item.estimatedPomodoros} pomodoros estimados</Text></View>{task?.id === item.id ? <FocoIcon name="check" size={18} color={foco.colors.bg} /> : null}</Pressable>)}
         {openTasks.length === 0 ? <Text style={styles.empty}>No hay tareas pendientes en este proyecto.</Text> : null}
       </FocoSheet>
 
@@ -187,26 +186,23 @@ export function FocusScreen() {
           <NumberField label="DESCANSO LARGO" value={longBreakDraft} onChange={setLongBreakDraft} fallback={timer.preferences.longBreakMinutes} min={1} max={90} suffix="min" />
           <NumberField label="CADA" value={longEveryDraft} onChange={setLongEveryDraft} fallback={timer.preferences.longBreakEvery} min={1} max={12} suffix="ciclos" />
           <NumberField label="META" value={cyclesDraft} onChange={setCyclesDraft} fallback={timer.preferences.targetCycles} min={1} max={12} suffix="ciclos" />
+          <NumberField label="AVISO PREVIO" value={notifyDraft} onChange={setNotifyDraft} fallback={timer.preferences.notifyBeforeEndMinutes} min={0} max={30} suffix="min" />
         </View>
         <FieldLabel>AUTOMATIZACIÓN</FieldLabel>
         <ToggleRow label="Iniciar descansos automáticamente" value={autoBreaks} onChange={setAutoBreaks} />
         <ToggleRow label="Iniciar enfoque automáticamente" value={autoFocus} onChange={setAutoFocus} />
         <ToggleRow label="Modo continuo" value={continuous} onChange={setContinuous} />
         <ToggleRow label="Mantener pantalla activa" value={keepAwake} onChange={setKeepAwake} />
+        <ToggleRow label="Vibración" value={vibration} onChange={setVibration} />
+        <ToggleRow label="Sonido" value={sound} onChange={setSound} />
       </FocoSheet>
     </>
   );
 }
 
-function Summary({ value, label }: { value: string; label: string }) {
-  return <View style={styles.summaryItem}><Text style={styles.summaryValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text><Text style={styles.summaryLabel}>{label}</Text></View>;
-}
-function NumberField({ label, value, onChange, fallback, min, max, suffix }: { label: string; value: string; onChange: (value: string) => void; fallback: number; min: number; max: number; suffix: string }) {
-  return <View style={styles.numberField}><Text style={styles.numberLabel}>{label}</Text><View style={styles.numberInputRow}><TextInput value={value} onChangeText={onChange} onBlur={() => onChange(normalizeIntegerDraft(value, fallback, min, max))} inputMode="numeric" keyboardType="number-pad" selectTextOnFocus style={styles.numberInput} /><Text style={styles.numberSuffix}>{suffix}</Text></View></View>;
-}
-function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
-  return <Pressable accessibilityRole="switch" accessibilityState={{ checked: value }} onPress={() => { onChange(!value); hapticSelection(); }} style={({ pressed }) => [styles.toggleRow, pressed && pressedStyle]}><Text style={styles.toggleLabel}>{label}</Text><View style={[styles.toggle, value && styles.toggleActive]}><View style={[styles.toggleKnob, value && styles.toggleKnobActive]} /></View></Pressable>;
-}
+function Summary({ value, label }: { value: string; label: string }) { return <View style={styles.summaryItem}><Text style={styles.summaryValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text><Text style={styles.summaryLabel}>{label}</Text></View>; }
+function NumberField({ label, value, onChange, fallback, min, max, suffix }: { label: string; value: string; onChange: (value: string) => void; fallback: number; min: number; max: number; suffix: string }) { return <View style={styles.numberField}><Text style={styles.numberLabel}>{label}</Text><View style={styles.numberInputRow}><TextInput value={value} onChangeText={onChange} onBlur={() => onChange(normalizeIntegerDraft(value, fallback, min, max))} inputMode="numeric" keyboardType="number-pad" selectTextOnFocus style={styles.numberInput} /><Text style={styles.numberSuffix}>{suffix}</Text></View></View>; }
+function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) { return <Pressable accessibilityRole="switch" accessibilityState={{ checked: value }} onPress={() => { onChange(!value); hapticSelection(); }} style={({ pressed }) => [styles.toggleRow, pressed && pressedStyle]}><Text style={styles.toggleLabel}>{label}</Text><View style={[styles.toggle, value && styles.toggleActive]}><View style={[styles.toggleKnob, value && styles.toggleKnobActive]} /></View></Pressable>; }
 
 const styles = StyleSheet.create({
   modeSwitch: { minHeight: 52, marginTop: 16, padding: 3, borderRadius: 16, backgroundColor: foco.colors.panel, borderWidth: 1, borderColor: foco.colors.border, flexDirection: 'row' },
@@ -218,7 +214,7 @@ const styles = StyleSheet.create({
   context: { minHeight: 64, marginTop: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: foco.colors.borderSoft, flexDirection: 'row', alignItems: 'center', gap: 11 },
   contextIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: foco.colors.panelStrong, alignItems: 'center', justifyContent: 'center' },
   contextCopy: { flex: 1, minWidth: 0 },
-  contextTitle: { color: foco.colors.text, fontSize: 15.5, fontWeight: '650' },
+  contextTitle: { color: foco.colors.text, fontSize: 15.5, fontWeight: '600' },
   contextMeta: { color: foco.colors.muted, fontSize: 11.5, marginTop: 4 },
   timerWrap: { height: 296, alignItems: 'center', justifyContent: 'center' },
   timerCopy: { alignItems: 'center' },
@@ -235,8 +231,12 @@ const styles = StyleSheet.create({
   messageText: { color: foco.colors.text, fontSize: 12.5, textAlign: 'center' },
   sessionSummary: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: foco.colors.borderSoft, paddingVertical: 15 },
   summaryItem: { flex: 1 },
-  summaryValue: { color: foco.colors.text, fontSize: 18.5, fontWeight: '650', fontVariant: ['tabular-nums'] },
+  summaryValue: { color: foco.colors.text, fontSize: 18.5, fontWeight: '600', fontVariant: ['tabular-nums'] },
   summaryLabel: { color: foco.colors.muted, fontSize: 11.5, marginTop: 4 },
+  projectChoices: { gap: 7, paddingBottom: 18 },
+  projectChoice: { minHeight: 43, borderRadius: 13, borderWidth: 1, borderColor: foco.colors.border, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
+  projectChoiceActive: { backgroundColor: foco.colors.text, borderColor: foco.colors.text },
+  projectChoiceText: { color: foco.colors.muted, fontSize: 12.5 },
   contextOption: { minHeight: 60, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: foco.colors.borderSoft, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 10 },
   contextOptionActive: { backgroundColor: foco.colors.text, borderRadius: 14, borderBottomColor: foco.colors.text },
   optionCopy: { flex: 1, minWidth: 0 },
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   numberField: { width: '48.5%', minHeight: 78, borderRadius: 14, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, padding: 11 },
   numberLabel: { color: foco.colors.muted, fontSize: 10.5, fontWeight: '700', letterSpacing: 0.5 },
   numberInputRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 7 },
-  numberInput: { flex: 1, color: foco.colors.text, fontSize: 21, fontWeight: '650', padding: 0, fontVariant: ['tabular-nums'] },
+  numberInput: { flex: 1, color: foco.colors.text, fontSize: 21, fontWeight: '600', padding: 0, fontVariant: ['tabular-nums'] },
   numberSuffix: { color: foco.colors.muted, fontSize: 11.5, paddingBottom: 3 },
   toggleRow: { minHeight: 56, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: foco.colors.borderSoft, flexDirection: 'row', alignItems: 'center' },
   toggleLabel: { flex: 1, color: foco.colors.text, fontSize: 14 },
