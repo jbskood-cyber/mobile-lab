@@ -332,9 +332,36 @@ function nextOccurrenceAt(base: number, recurrence: RecurrenceRule) {
 
 function createNextOccurrence(state: FocoState, task: Task, now: number): Task | undefined {
   if (task.recurrence.kind === 'none') return undefined;
-  const sourceAnchor = task.recurrence.fromCompletion ? now : task.plannedStartAt ?? task.dueAt ?? now;
-  const nextAnchor = nextOccurrenceAt(sourceAnchor, task.recurrence);
-  const shift = nextAnchor - sourceAnchor;
+
+  const originalAnchor = task.plannedStartAt ?? task.dueAt ?? now;
+  const recurrenceBase = task.recurrence.fromCompletion ? now : originalAnchor;
+  const nextAnchor = nextOccurrenceAt(recurrenceBase, task.recurrence);
+  const fixedShift = nextAnchor - originalAnchor;
+  const dueOffset = task.plannedStartAt !== undefined && task.dueAt !== undefined
+    ? Math.max(task.durationMinutes * 60_000, task.dueAt - task.plannedStartAt)
+    : task.durationMinutes * 60_000;
+  const reminderAnchor = task.plannedStartAt ?? task.dueAt;
+  const reminderOffset = task.reminderAt !== undefined && reminderAnchor !== undefined
+    ? task.reminderAt - reminderAnchor
+    : undefined;
+
+  const plannedStartAt = task.plannedStartAt === undefined
+    ? undefined
+    : task.recurrence.fromCompletion
+      ? nextAnchor
+      : task.plannedStartAt + fixedShift;
+  const dueAt = task.dueAt === undefined
+    ? undefined
+    : task.recurrence.fromCompletion
+      ? plannedStartAt !== undefined ? plannedStartAt + dueOffset : nextAnchor
+      : task.dueAt + fixedShift;
+  const nextReminderBase = plannedStartAt ?? dueAt ?? nextAnchor;
+  const reminderAt = task.reminderAt === undefined
+    ? undefined
+    : task.recurrence.fromCompletion
+      ? nextReminderBase + (reminderOffset ?? 0)
+      : task.reminderAt + fixedShift;
+
   const id = makeId('task', now + 1, state.tasks.length + 1);
   return {
     ...task,
@@ -343,11 +370,17 @@ function createNextOccurrence(state: FocoState, task: Task, now: number): Task |
     completedAt: undefined,
     inProgress: false,
     captured: false,
-    plannedStartAt: task.plannedStartAt === undefined ? undefined : task.plannedStartAt + shift,
-    dueAt: task.dueAt === undefined ? undefined : task.dueAt + shift,
-    reminderAt: task.reminderAt === undefined ? undefined : task.reminderAt + shift,
+    plannedStartAt,
+    dueAt,
+    reminderAt,
     notificationId: undefined,
-    subtasks: task.subtasks.map((subtask, index) => ({ ...subtask, id: makeId(`${id}-subtask`, now + 1, index + 1), completed: false, completedAt: undefined, createdAt: now + 1 })),
+    subtasks: task.subtasks.map((subtask, index) => ({
+      ...subtask,
+      id: makeId(`${id}-subtask`, now + 1, index + 1),
+      completed: false,
+      completedAt: undefined,
+      createdAt: now + 1,
+    })),
     createdAt: now + 1,
     updatedAt: now + 1,
     sortOrder: state.tasks.length,
@@ -412,8 +445,23 @@ export function moveTaskToInbox(state: FocoState, taskId: string, now = Date.now
 export function scheduleTask(state: FocoState, taskId: string, plannedStartAt: number, now = Date.now()) {
   const task = state.tasks.find((item) => item.id === taskId);
   if (!task || !Number.isFinite(plannedStartAt)) return state;
-  const dueAt = task.dueAt ?? plannedStartAt + task.durationMinutes * 60_000;
-  return updateTaskV2(state, taskId, { plannedStartAt, dueAt, captured: false }, now);
+
+  const previousAnchor = task.plannedStartAt ?? task.dueAt;
+  const dueOffset = previousAnchor !== undefined && task.dueAt !== undefined
+    ? Math.max(task.durationMinutes * 60_000, task.dueAt - previousAnchor)
+    : task.durationMinutes * 60_000;
+  const reminderOffset = previousAnchor !== undefined && task.reminderAt !== undefined
+    ? task.reminderAt - previousAnchor
+    : undefined;
+
+  return updateTaskV2(state, taskId, {
+    plannedStartAt,
+    dueAt: plannedStartAt + dueOffset,
+    reminderAt: reminderOffset === undefined ? task.reminderAt : plannedStartAt + reminderOffset,
+    captured: false,
+    completed: false,
+    completedAt: undefined,
+  }, now);
 }
 
 export function addSubtask(state: FocoState, taskId: string, title: string, now = Date.now()) {
