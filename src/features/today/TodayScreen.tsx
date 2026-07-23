@@ -29,6 +29,7 @@ export function TodayScreen() {
   const [draft, setDraft] = useState('');
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('Todas');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [dayInfoOpen, setDayInfoOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editProjectId, setEditProjectId] = useState('');
@@ -108,8 +109,15 @@ export function TodayScreen() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-      <FocoScreen title="Hoy" subtitle={getTodayLabel()} rightIcon="calendar">
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
+      <FocoScreen
+        title="Hoy"
+        subtitle={getTodayLabel()}
+        screenKey="index"
+        rightIcon="calendar"
+        rightAccessibilityLabel="Ver resumen de hoy"
+        onRightPress={() => { setDayInfoOpen(true); hapticSelection(); }}
+      >
         {storageError ? <View accessibilityLiveRegion="polite" style={styles.storageWarning}><Text style={styles.storageWarningText}>{storageError}</Text></View> : null}
 
         <Surface style={styles.metrics}>
@@ -123,8 +131,8 @@ export function TodayScreen() {
         </Surface>
 
         <Surface style={styles.quickAdd}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Escribir nueva tarea" hitSlop={8} onPress={() => inputRef.current?.focus()} style={({ pressed }) => pressed && pressedStyle}>
-            <FocoIcon name="plus" size={26} color={foco.colors.muted} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Escribir nueva tarea" hitSlop={8} onPress={() => inputRef.current?.focus()} style={({ pressed }) => [styles.quickAddIcon, pressed && pressedStyle]}>
+            <FocoIcon name="plus" size={25} color={foco.colors.muted} />
           </Pressable>
           <TextInput
             ref={inputRef}
@@ -132,22 +140,27 @@ export function TodayScreen() {
             onChangeText={setDraft}
             onSubmitEditing={submitTask}
             returnKeyType="done"
+            blurOnSubmit
+            autoCapitalize="sentences"
+            autoCorrect
             placeholder="Añadir tarea"
             placeholderTextColor={foco.colors.subtle}
             style={styles.input}
             accessibilityLabel="Añadir tarea"
           />
-          {draft.trim() ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Guardar tarea" onPress={submitTask} style={({ pressed }) => [styles.inlineSave, pressed && pressedStyle]}>
-              <FocoIcon name="check" size={20} color={foco.colors.bg} strokeWidth={2.4} />
-            </Pressable>
-          ) : null}
+          <View style={styles.inlineActionSlot}>
+            {draft.trim() ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Guardar tarea" onPress={submitTask} style={({ pressed }) => [styles.inlineSave, pressed && pressedStyle]}>
+                <FocoIcon name="check" size={19} color={foco.colors.bg} strokeWidth={2.4} />
+              </Pressable>
+            ) : null}
+          </View>
         </Surface>
 
         <SectionTitle
           title="Enfoque de hoy"
           action={
-            <Pressable accessibilityRole="button" accessibilityLabel="Ver plan" onPress={() => router.navigate('/(tabs)/focus')} style={({ pressed }) => [styles.planLink, pressed && pressedStyle]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Abrir plan de enfoque" onPress={() => router.navigate('/(tabs)/focus')} style={({ pressed }) => [styles.planLink, pressed && pressedStyle]}>
               <Text style={styles.planText}>Ver plan</Text>
               <FocoIcon name="chevron-right" size={16} color={foco.colors.muted} />
             </Pressable>
@@ -158,7 +171,7 @@ export function TodayScreen() {
           <View style={styles.focusCopy}>
             <Text style={styles.focusTitle}>Bloque 2 · Transformación</Text>
             <Text style={styles.focusProject}>Plan maestro</Text>
-            <Text style={styles.focusTime}>24:36</Text>
+            <Text style={styles.focusTime} maxFontSizeMultiplier={1.05}>24:36</Text>
             <Text style={styles.focusGoal}>Objetivo: 3 bloques</Text>
           </View>
           <View style={styles.focusVisual}>
@@ -166,12 +179,12 @@ export function TodayScreen() {
             <View style={styles.orbitInner} />
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Iniciar enfoque"
+              accessibilityLabel="Abrir temporizador de enfoque"
               onPress={() => { hapticImpact(); router.navigate('/(tabs)/focus'); }}
               style={({ pressed }) => [styles.playButton, pressed && pressedStyle]}
             >
-              <ProgressRing size={76} strokeWidth={1.5} progress={0.82} color={foco.colors.white} trackColor="#454951" glow>
-                <FocoIcon name="play" size={30} color={foco.colors.white} />
+              <ProgressRing size={74} strokeWidth={1.5} progress={0.82} color={foco.colors.white} trackColor="#454951" glow>
+                <FocoIcon name="play" size={29} color={foco.colors.white} />
               </ProgressRing>
             </Pressable>
           </View>
@@ -181,8 +194,8 @@ export function TodayScreen() {
           title="Tareas"
           detail={taskFilter === 'Todas' ? `${openTasks.length} pendientes` : taskFilter}
           action={
-            <Pressable accessibilityRole="button" accessibilityLabel="Filtrar tareas" onPress={() => { setFilterOpen(true); hapticSelection(); }} style={({ pressed }) => [styles.filterButton, taskFilter !== 'Todas' && styles.filterButtonActive, pressed && pressedStyle]}>
-              <FocoIcon name="filter" size={19} color={taskFilter === 'Todas' ? foco.colors.muted : foco.colors.bg} />
+            <Pressable accessibilityRole="button" accessibilityLabel="Filtrar tareas" accessibilityState={{ selected: taskFilter !== 'Todas' }} onPress={() => { setFilterOpen(true); hapticSelection(); }} style={({ pressed }) => [styles.filterButton, taskFilter !== 'Todas' && styles.filterButtonActive, pressed && pressedStyle]}>
+              <FocoIcon name="filter" size={18} color={taskFilter === 'Todas' ? foco.colors.muted : foco.colors.text} />
             </Pressable>
           }
         />
@@ -193,18 +206,18 @@ export function TodayScreen() {
             return (
               <View key={task.id} style={styles.taskRow}>
                 <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: false }} accessibilityLabel={`Completar ${task.title}`} onPress={() => completeTask(task)} style={({ pressed }) => [styles.taskCheck, pressed && pressedStyle]}>
-                  <FocoIcon name="circle" size={27} color={task.inProgress ? foco.colors.text : foco.colors.subtle} strokeWidth={task.inProgress ? 2 : 1.55} />
+                  <FocoIcon name="circle" size={26} color={task.inProgress ? foco.colors.text : foco.colors.subtle} strokeWidth={task.inProgress ? 2 : 1.55} />
                 </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel={`Editar ${task.title}`} onPress={() => openEditor(task)} style={({ pressed }) => [styles.taskCopy, pressed && styles.taskCopyPressed]}>
+                <View style={styles.taskCopy}>
                   <Text style={styles.taskTitle} numberOfLines={1}>{task.title}</Text>
                   <View style={styles.taskMeta}>
-                    <Text style={styles.taskProject}>{project?.name ?? 'Sin proyecto'}</Text>
+                    <Text style={styles.taskProject} numberOfLines={1}>{project?.name ?? 'Sin proyecto'}</Text>
                     <View style={[styles.priorityDot, task.priority === 'Alta' && styles.priorityHigh, task.priority === 'Media' && styles.priorityMedium]} />
                     <Text style={styles.taskPriority}>{task.priority}</Text>
                     {task.inProgress ? <Text style={styles.inProgress}>En curso</Text> : null}
                   </View>
-                </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel={`Opciones de ${task.title}`} onPress={() => openEditor(task)} style={({ pressed }) => [styles.trailing, pressed && pressedStyle]}>
+                </View>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Editar ${task.title}`} onPress={() => openEditor(task)} style={({ pressed }) => [styles.trailing, pressed && pressedStyle]}>
                   <FocoIcon name={task.favorite ? 'star' : 'more'} size={20} color={task.favorite ? foco.colors.text : foco.colors.subtle} strokeWidth={1.45} />
                 </Pressable>
               </View>
@@ -212,20 +225,23 @@ export function TodayScreen() {
           })}
           {openTasks.length === 0 ? (
             <Surface style={styles.emptyState}>
-              <FocoIcon name="check" size={28} color={foco.colors.text} />
-              <Text style={styles.emptyTitle}>Nada pendiente aquí</Text>
-              <Text style={styles.emptyCopy}>{taskFilter === 'Todas' ? 'Tu día está despejado. Añade una tarea cuando la necesites.' : 'Cambia el filtro para ver el resto de tus tareas.'}</Text>
+              <FocoIcon name="check" size={27} color={foco.colors.text} />
+              <Text style={styles.emptyTitle}>Todo despejado</Text>
+              <Text style={styles.emptyCopy}>{taskFilter === 'Todas' ? 'Añade una tarea cuando aparezca lo siguiente.' : 'Prueba con otro filtro.'}</Text>
             </Surface>
           ) : null}
         </View>
       </FocoScreen>
 
-      <FocoSheet
-        visible={filterOpen}
-        title="Filtrar tareas"
-        subtitle="Muestra únicamente lo que necesita tu atención ahora."
-        onClose={() => setFilterOpen(false)}
-      >
+      <FocoSheet visible={dayInfoOpen} title="Hoy" subtitle={getTodayLabel()} onClose={() => setDayInfoOpen(false)}>
+        <View style={styles.daySummaryGrid}>
+          <DaySummary value={formatDuration(summary.focusSeconds, true)} label="Enfoque" />
+          <DaySummary value={String(summary.completed)} label="Completadas" />
+          <DaySummary value={String(summary.pending + summary.active)} label="Abiertas" />
+        </View>
+      </FocoSheet>
+
+      <FocoSheet visible={filterOpen} title="Filtrar tareas" subtitle="Muestra solo lo que necesitas ahora." onClose={() => setFilterOpen(false)}>
         <View style={styles.sheetOptions}>
           {(['Todas', 'En curso', 'Favoritas', 'Alta prioridad'] as TaskFilter[]).map((item) => (
             <Pressable key={item} accessibilityRole="radio" accessibilityState={{ checked: taskFilter === item }} onPress={() => { setTaskFilter(item); setFilterOpen(false); hapticSelection(); }} style={({ pressed }) => [styles.sheetOption, taskFilter === item && styles.sheetOptionSelected, pressed && pressedStyle]}>
@@ -239,7 +255,7 @@ export function TodayScreen() {
       <FocoSheet
         visible={Boolean(editingTask)}
         title="Editar tarea"
-        subtitle="Los cambios se guardan en este dispositivo."
+        subtitle="Título, proyecto y prioridad."
         onClose={() => setEditingTask(null)}
         footer={
           <>
@@ -249,12 +265,12 @@ export function TodayScreen() {
         }
       >
         <FieldLabel>TÍTULO</FieldLabel>
-        <TextInput value={editTitle} onChangeText={setEditTitle} placeholder="Nombre de la tarea" placeholderTextColor={foco.colors.subtle} style={styles.sheetInput} accessibilityLabel="Título de la tarea" />
+        <TextInput value={editTitle} onChangeText={setEditTitle} autoCapitalize="sentences" returnKeyType="done" placeholder="Nombre de la tarea" placeholderTextColor={foco.colors.subtle} style={styles.sheetInput} accessibilityLabel="Título de la tarea" />
 
         <FieldLabel>PROYECTO</FieldLabel>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choiceRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.choiceRow}>
           {activeProjects.map((project) => (
-            <Pressable key={project.id} onPress={() => { setEditProjectId(project.id); hapticSelection(); }} style={({ pressed }) => [styles.choiceChip, editProjectId === project.id && styles.choiceChipSelected, pressed && pressedStyle]}>
+            <Pressable key={project.id} accessibilityRole="radio" accessibilityState={{ checked: editProjectId === project.id }} onPress={() => { setEditProjectId(project.id); hapticSelection(); }} style={({ pressed }) => [styles.choiceChip, editProjectId === project.id && styles.choiceChipSelected, pressed && pressedStyle]}>
               <Text style={[styles.choiceText, editProjectId === project.id && styles.choiceTextSelected]}>{project.name}</Text>
             </Pressable>
           ))}
@@ -263,18 +279,18 @@ export function TodayScreen() {
         <FieldLabel>PRIORIDAD</FieldLabel>
         <View style={styles.choiceRow}>
           {(['Alta', 'Media', 'Baja'] as TaskPriority[]).map((priority) => (
-            <Pressable key={priority} onPress={() => { setEditPriority(priority); hapticSelection(); }} style={({ pressed }) => [styles.choiceChip, styles.choiceFlex, editPriority === priority && styles.choiceChipSelected, pressed && pressedStyle]}>
+            <Pressable key={priority} accessibilityRole="radio" accessibilityState={{ checked: editPriority === priority }} onPress={() => { setEditPriority(priority); hapticSelection(); }} style={({ pressed }) => [styles.choiceChip, styles.choiceFlex, editPriority === priority && styles.choiceChipSelected, pressed && pressedStyle]}>
               <Text style={[styles.choiceText, editPriority === priority && styles.choiceTextSelected]}>{priority}</Text>
             </Pressable>
           ))}
         </View>
 
         <View style={styles.toggleRow}>
-          <Pressable onPress={() => { setEditInProgress((value) => !value); hapticSelection(); }} style={({ pressed }) => [styles.toggleCard, editInProgress && styles.toggleCardActive, pressed && pressedStyle]}>
+          <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: editInProgress }} onPress={() => { setEditInProgress((value) => !value); hapticSelection(); }} style={({ pressed }) => [styles.toggleCard, editInProgress && styles.toggleCardActive, pressed && pressedStyle]}>
             <FocoIcon name="circle" size={21} color={editInProgress ? foco.colors.bg : foco.colors.muted} />
             <Text style={[styles.toggleText, editInProgress && styles.toggleTextActive]}>En curso</Text>
           </Pressable>
-          <Pressable onPress={() => { setEditFavorite((value) => !value); hapticSelection(); }} style={({ pressed }) => [styles.toggleCard, editFavorite && styles.toggleCardActive, pressed && pressedStyle]}>
+          <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: editFavorite }} onPress={() => { setEditFavorite((value) => !value); hapticSelection(); }} style={({ pressed }) => [styles.toggleCard, editFavorite && styles.toggleCardActive, pressed && pressedStyle]}>
             <FocoIcon name="star" size={21} color={editFavorite ? foco.colors.bg : foco.colors.muted} />
             <Text style={[styles.toggleText, editFavorite && styles.toggleTextActive]}>Favorita</Text>
           </Pressable>
@@ -287,75 +303,78 @@ export function TodayScreen() {
 }
 
 function Metric({ icon, value, label }: { icon: 'clock' | 'list' | 'circle' | 'check'; value: string; label: string }) {
-  return (
-    <View style={styles.metricItem}>
-      <FocoIcon name={icon} size={23} color={foco.colors.muted} strokeWidth={1.65} />
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel} numberOfLines={1}>{label}</Text>
-    </View>
-  );
+  return <View style={styles.metricItem}><FocoIcon name={icon} size={22} color={foco.colors.muted} strokeWidth={1.65} /><Text style={styles.metricValue} maxFontSizeMultiplier={1.08}>{value}</Text><Text style={styles.metricLabel} numberOfLines={1}>{label}</Text></View>;
+}
+
+function DaySummary({ value, label }: { value: string; label: string }) {
+  return <View style={styles.daySummary}><Text style={styles.daySummaryValue}>{value}</Text><Text style={styles.daySummaryLabel}>{label}</Text></View>;
 }
 
 function Divider() { return <View style={styles.divider} />; }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  storageWarning: { marginTop: 14, borderRadius: 14, borderWidth: 1, borderColor: '#604047', backgroundColor: '#241719', padding: 12 },
-  storageWarningText: { color: '#EBC0C5', fontSize: 12.5, lineHeight: 18 },
-  metrics: { marginTop: 24, height: 126, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6 },
-  metricItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 7 },
-  metricValue: { color: foco.colors.text, fontSize: 24, lineHeight: 27, fontWeight: '600' },
-  metricLabel: { color: foco.colors.muted, fontSize: 11.5 },
-  divider: { width: 1, height: 74, backgroundColor: foco.colors.border },
-  quickAdd: { marginTop: 14, minHeight: 68, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 15 },
-  input: { flex: 1, color: foco.colors.text, fontSize: 18, paddingVertical: 14 },
-  inlineSave: { width: 38, height: 38, borderRadius: 19, backgroundColor: foco.colors.text, alignItems: 'center', justifyContent: 'center' },
+  storageWarning: { marginTop: 12, borderRadius: 13, borderWidth: 1, borderColor: '#604047', backgroundColor: '#241719', padding: 11 },
+  storageWarningText: { color: '#EBC0C5', fontSize: 12, lineHeight: 17 },
+  metrics: { marginTop: 22, height: 116, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4 },
+  metricItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, minWidth: 0 },
+  metricValue: { color: foco.colors.text, fontSize: 22, lineHeight: 25, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  metricLabel: { color: foco.colors.muted, fontSize: 10.8 },
+  divider: { width: 1, height: 68, backgroundColor: foco.colors.border },
+  quickAdd: { marginTop: 12, minHeight: 62, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
+  quickAddIcon: { width: 46, height: 48, alignItems: 'center', justifyContent: 'center' },
+  input: { flex: 1, minWidth: 0, color: foco.colors.text, fontSize: 17, paddingVertical: 12 },
+  inlineActionSlot: { width: 44, height: 48, alignItems: 'center', justifyContent: 'center' },
+  inlineSave: { width: 36, height: 36, borderRadius: 18, backgroundColor: foco.colors.text, alignItems: 'center', justifyContent: 'center' },
   planLink: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 2 },
-  planText: { color: foco.colors.muted, fontSize: 15 },
-  focusCard: { height: 180, flexDirection: 'row', overflow: 'hidden', ...shadowGlow },
-  focusCopy: { flex: 1, paddingLeft: 20, paddingVertical: 18, zIndex: 2 },
-  focusTitle: { color: foco.colors.text, fontSize: 18, fontWeight: '600' },
-  focusProject: { color: foco.colors.muted, fontSize: 14.5, marginTop: 6 },
-  focusTime: { color: foco.colors.text, fontSize: 44, lineHeight: 48, fontWeight: '300', marginTop: 16, letterSpacing: -1.2 },
-  focusGoal: { color: foco.colors.muted, fontSize: 14.5, marginTop: 2 },
-  focusVisual: { width: 150, alignItems: 'center', justifyContent: 'center' },
-  orbitOuter: { position: 'absolute', width: 190, height: 190, borderRadius: 95, borderWidth: 1, borderColor: '#292C33' },
-  orbitInner: { position: 'absolute', width: 130, height: 130, borderRadius: 65, borderWidth: 1, borderColor: '#34373E' },
-  playButton: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
+  planText: { color: foco.colors.muted, fontSize: 14.5 },
+  focusCard: { height: 170, flexDirection: 'row', overflow: 'hidden', ...shadowGlow },
+  focusCopy: { flex: 1, minWidth: 0, paddingLeft: 18, paddingVertical: 16, zIndex: 2 },
+  focusTitle: { color: foco.colors.text, fontSize: 17, fontWeight: '600' },
+  focusProject: { color: foco.colors.muted, fontSize: 14, marginTop: 5 },
+  focusTime: { color: foco.colors.text, fontSize: 42, lineHeight: 46, fontWeight: '300', marginTop: 14, letterSpacing: -1.1, fontVariant: ['tabular-nums'] },
+  focusGoal: { color: foco.colors.muted, fontSize: 14, marginTop: 1 },
+  focusVisual: { width: 142, alignItems: 'center', justifyContent: 'center' },
+  orbitOuter: { position: 'absolute', width: 180, height: 180, borderRadius: 90, borderWidth: 1, borderColor: '#292C33' },
+  orbitInner: { position: 'absolute', width: 124, height: 124, borderRadius: 62, borderWidth: 1, borderColor: '#34373E' },
+  playButton: { width: 86, height: 86, alignItems: 'center', justifyContent: 'center' },
   filterButton: { width: 48, height: 48, borderRadius: 24, borderWidth: 1, borderColor: foco.colors.border, alignItems: 'center', justifyContent: 'center' },
-  filterButtonActive: { backgroundColor: foco.colors.text, borderColor: foco.colors.text },
-  taskList: { gap: 8 },
-  taskRow: { minHeight: 78, borderRadius: 16, borderWidth: 1, borderColor: foco.colors.borderSoft, backgroundColor: foco.colors.panel, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center' },
+  filterButtonActive: { backgroundColor: foco.colors.panelStrong, borderColor: foco.colors.text },
+  taskList: { gap: 7 },
+  taskRow: { minHeight: 72, borderRadius: 15, borderWidth: 1, borderColor: foco.colors.borderSoft, backgroundColor: foco.colors.panel, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center' },
   taskCheck: { width: 48, height: 58, alignItems: 'center', justifyContent: 'center' },
-  taskCopy: { flex: 1, paddingVertical: 13 },
-  taskCopyPressed: { opacity: 0.72 },
-  taskTitle: { color: foco.colors.text, fontSize: 16.5, fontWeight: '500' },
-  taskMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 5 },
-  taskProject: { color: foco.colors.muted, fontSize: 13 },
-  priorityDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#A2A5AB' },
+  taskCopy: { flex: 1, minWidth: 0, paddingVertical: 11 },
+  taskTitle: { color: foco.colors.text, fontSize: 16, fontWeight: '500' },
+  taskMeta: { minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 5, marginTop: 4 },
+  taskProject: { flexShrink: 1, color: foco.colors.muted, fontSize: 12.5 },
+  priorityDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#A2A5AB' },
   priorityHigh: { borderWidth: 1.5, borderColor: foco.colors.accent, backgroundColor: 'transparent' },
   priorityMedium: { borderWidth: 1.5, borderColor: '#C9972A', backgroundColor: 'transparent' },
-  taskPriority: { color: foco.colors.muted, fontSize: 13 },
-  inProgress: { color: foco.colors.text, fontSize: 10.5, borderWidth: 1, borderColor: foco.colors.border, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  taskPriority: { color: foco.colors.muted, fontSize: 12.5 },
+  inProgress: { color: foco.colors.text, fontSize: 10, borderWidth: 1, borderColor: foco.colors.border, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
   trailing: { width: 48, height: 58, alignItems: 'center', justifyContent: 'center' },
-  emptyState: { minHeight: 150, alignItems: 'center', justifyContent: 'center', padding: 22 },
-  emptyTitle: { color: foco.colors.text, fontSize: 17, fontWeight: '600', marginTop: 12 },
-  emptyCopy: { color: foco.colors.muted, fontSize: 13.5, lineHeight: 20, textAlign: 'center', marginTop: 6 },
-  sheetOptions: { gap: 9, paddingBottom: 10 },
-  sheetOption: { minHeight: 54, borderRadius: 16, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  emptyState: { minHeight: 132, alignItems: 'center', justifyContent: 'center', padding: 18 },
+  emptyTitle: { color: foco.colors.text, fontSize: 16.5, fontWeight: '600', marginTop: 10 },
+  emptyCopy: { color: foco.colors.muted, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 5 },
+  daySummaryGrid: { flexDirection: 'row', gap: 9, paddingBottom: 8 },
+  daySummary: { flex: 1, minHeight: 96, borderRadius: 16, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, padding: 13, justifyContent: 'space-between' },
+  daySummaryValue: { color: foco.colors.text, fontSize: 20, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  daySummaryLabel: { color: foco.colors.muted, fontSize: 12 },
+  sheetOptions: { gap: 8, paddingBottom: 6 },
+  sheetOption: { minHeight: 52, borderRadius: 15, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sheetOptionSelected: { backgroundColor: foco.colors.text, borderColor: foco.colors.text },
-  sheetOptionText: { color: foco.colors.text, fontSize: 15.5 },
+  sheetOptionText: { color: foco.colors.text, fontSize: 15 },
   sheetOptionTextSelected: { color: foco.colors.bg, fontWeight: '600' },
-  sheetInput: { minHeight: 54, borderRadius: 16, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, color: foco.colors.text, paddingHorizontal: 15, fontSize: 16, marginBottom: 20 },
-  choiceRow: { flexDirection: 'row', gap: 9, paddingBottom: 20 },
-  choiceChip: { minHeight: 46, borderRadius: 15, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, paddingHorizontal: 15, alignItems: 'center', justifyContent: 'center' },
+  sheetInput: { minHeight: 52, borderRadius: 15, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, color: foco.colors.text, paddingHorizontal: 14, fontSize: 15.5, marginBottom: 18 },
+  choiceRow: { flexDirection: 'row', gap: 8, paddingBottom: 18 },
+  choiceChip: { minHeight: 46, borderRadius: 14, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   choiceChipSelected: { backgroundColor: foco.colors.text, borderColor: foco.colors.text },
-  choiceText: { color: foco.colors.muted, fontSize: 14 },
+  choiceText: { color: foco.colors.muted, fontSize: 13.5 },
   choiceTextSelected: { color: foco.colors.bg, fontWeight: '600' },
   choiceFlex: { flex: 1 },
-  toggleRow: { flexDirection: 'row', gap: 10, paddingTop: 4 },
-  toggleCard: { flex: 1, minHeight: 56, borderRadius: 16, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  toggleRow: { flexDirection: 'row', gap: 9, paddingTop: 2 },
+  toggleCard: { flex: 1, minHeight: 54, borderRadius: 15, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   toggleCardActive: { backgroundColor: foco.colors.text, borderColor: foco.colors.text },
-  toggleText: { color: foco.colors.muted, fontSize: 14 },
+  toggleText: { color: foco.colors.muted, fontSize: 13.5 },
   toggleTextActive: { color: foco.colors.bg, fontWeight: '600' },
 });
