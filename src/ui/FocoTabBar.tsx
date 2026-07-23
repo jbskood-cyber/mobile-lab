@@ -9,9 +9,10 @@ import { hapticSelection, pressedStyle } from './premium';
 
 const routeMeta: Record<string, { label: string; icon: IconName }> = {
   index: { label: 'Hoy', icon: 'home' },
-  projects: { label: 'Proyectos', icon: 'folder' },
+  agenda: { label: 'Agenda', icon: 'calendar' },
   focus: { label: 'Enfoque', icon: 'circle' },
-  stats: { label: 'Estadísticas', icon: 'bars' },
+  projects: { label: 'Proyectos', icon: 'folder' },
+  stats: { label: 'Progreso', icon: 'bars' },
 };
 
 export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
@@ -21,7 +22,7 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
   if (keyboardVisible || overlayCount > 0 || appMenuVisible || focusImmersive) return null;
 
   return (
-    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 7) }]}>
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 6) }]}>
       <View style={styles.topLine} />
       <View style={styles.row}>
         {state.routes.map((route, index) => {
@@ -32,10 +33,9 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (event.defaultPrevented) return;
             hapticSelection();
-            scrollToTop(route.name);
-            if (!focused) navigation.navigate(route.name);
+            if (focused) scrollToTop(route.name);
+            else navigation.navigate(route.name);
           };
-          const onLongPress = () => navigation.emit({ type: 'tabLongPress', target: route.key });
           return (
             <Pressable
               key={route.key}
@@ -43,13 +43,12 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
               accessibilityState={{ selected: focused }}
               accessibilityLabel={options?.tabBarAccessibilityLabel ?? meta.label}
               onPress={onPress}
-              onLongPress={onLongPress}
+              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
               style={({ pressed }) => [styles.item, pressed && pressedStyle]}
             >
-              <View style={[styles.iconHalo, focused && styles.iconHaloActive]}>
-                <FocoIcon name={meta.icon} size={focused ? 23 : 22} color={focused ? foco.colors.text : foco.colors.inactive} strokeWidth={focused ? 2.05 : 1.6} />
-              </View>
-              <Text style={[styles.label, focused && styles.labelActive]} maxFontSizeMultiplier={1.12}>{meta.label}</Text>
+              <FocoIcon name={meta.icon} size={focused ? 23 : 21} color={focused ? foco.colors.text : foco.colors.inactive} strokeWidth={focused ? 2.1 : 1.55} />
+              <Text style={[styles.label, focused && styles.labelActive]} maxFontSizeMultiplier={1.08}>{meta.label}</Text>
+              {focused ? <View style={styles.activeLine} /> : null}
             </Pressable>
           );
         })}
@@ -59,12 +58,11 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
 }
 
 const styles = StyleSheet.create({
-  wrapper: { backgroundColor: '#08090B', paddingTop: 6 },
-  topLine: { height: 1, backgroundColor: foco.colors.borderSoft },
-  row: { height: 68, flexDirection: 'row', alignItems: 'center' },
-  item: { flex: 1, minHeight: 62, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  iconHalo: { width: 42, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  iconHaloActive: { backgroundColor: 'rgba(255,255,255,0.06)' },
-  label: { color: foco.colors.inactive, fontSize: 11.5, fontWeight: '500' },
-  labelActive: { color: foco.colors.text, fontWeight: '600' },
+  wrapper: { backgroundColor: '#08090B' },
+  topLine: { height: StyleSheet.hairlineWidth, backgroundColor: foco.colors.borderSoft },
+  row: { height: 66, flexDirection: 'row', alignItems: 'center' },
+  item: { flex: 1, minHeight: 62, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  label: { color: foco.colors.inactive, fontSize: 10.3, fontWeight: '550' },
+  labelActive: { color: foco.colors.text, fontWeight: '700' },
+  activeLine: { position: 'absolute', top: 0, width: 24, height: 2, borderRadius: 1, backgroundColor: foco.colors.text },
 });
