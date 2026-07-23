@@ -1,5 +1,5 @@
 import type { PropsWithChildren, ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FocoIcon, type IconName } from './FocoIcon';
@@ -24,7 +24,7 @@ export function FocoScreen({
   children,
 }: ScreenProps) {
   const content = (
-    <View style={[styles.content, { paddingBottom: contentBottomPadding }]}>
+    <View style={[styles.content, { paddingBottom: contentBottomPadding }]}> 
       <View style={styles.toolbar}>
         <Pressable accessibilityRole="button" accessibilityLabel="Abrir menú" hitSlop={10} style={styles.iconButton}>
           <FocoIcon name="menu" size={27} color={foco.colors.text} />
@@ -46,12 +46,7 @@ export function FocoScreen({
       <View pointerEvents="none" style={styles.ambientTop} />
       <View pointerEvents="none" style={styles.ambientBottom} />
       {scroll ? (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {content}
         </ScrollView>
       ) : content}
@@ -59,7 +54,7 @@ export function FocoScreen({
   );
 }
 
-export function Surface({ children, style }: PropsWithChildren<{ style?: object }>) {
+export function Surface({ children, style }: PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) {
   return <View style={[styles.surface, style]}>{children}</View>;
 }
 
@@ -84,70 +79,16 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1 },
   content: { paddingHorizontal: 22 },
-  ambientTop: {
-    position: 'absolute',
-    top: -120,
-    right: -80,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(255,255,255,0.018)',
-  },
-  ambientBottom: {
-    position: 'absolute',
-    bottom: 40,
-    left: -120,
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: 'rgba(255,255,255,0.012)',
-  },
-  toolbar: {
-    height: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    color: foco.colors.text,
-    fontSize: 46,
-    lineHeight: 52,
-    fontWeight: '700',
-    letterSpacing: -1.6,
-  },
-  subtitle: {
-    color: foco.colors.muted,
-    fontSize: 17,
-    lineHeight: 23,
-    marginTop: 5,
-  },
-  surface: {
-    backgroundColor: foco.colors.panel,
-    borderWidth: 1,
-    borderColor: foco.colors.border,
-    borderRadius: foco.radius.md,
-  },
-  sectionRow: {
-    marginTop: 22,
-    marginBottom: 12,
-    minHeight: 30,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+  ambientTop: { position: 'absolute', top: -120, right: -80, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255,255,255,0.018)' },
+  ambientBottom: { position: 'absolute', bottom: 40, left: -120, width: 320, height: 320, borderRadius: 160, backgroundColor: 'rgba(255,255,255,0.012)' },
+  toolbar: { height: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  title: { color: foco.colors.text, fontSize: 46, lineHeight: 52, fontWeight: '700', letterSpacing: -1.6 },
+  subtitle: { color: foco.colors.muted, fontSize: 17, lineHeight: 23, marginTop: 5 },
+  surface: { backgroundColor: foco.colors.panel, borderWidth: 1, borderColor: foco.colors.border, borderRadius: foco.radius.md },
+  sectionRow: { marginTop: 22, marginBottom: 12, minHeight: 30, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitleLine: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   sectionTitle: { color: foco.colors.text, fontSize: 19, fontWeight: '600' },
   sectionDetail: { color: foco.colors.muted, fontSize: 15 },
-  eyebrow: {
-    color: foco.colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 3.5,
-  },
+  eyebrow: { color: foco.colors.muted, fontSize: 12, fontWeight: '700', letterSpacing: 3.5 },
 });
