@@ -1,24 +1,24 @@
 export const typeScale = {
   display: {
-    fontSize: 44,
-    lineHeight: 49,
+    fontSize: 34,
+    lineHeight: 39,
     fontWeight: '700' as const,
-    letterSpacing: -1.5,
+    letterSpacing: -1.05,
   },
   title: {
-    fontSize: 23,
-    lineHeight: 28,
-    fontWeight: '600' as const,
-    letterSpacing: -0.4,
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: '650' as const,
+    letterSpacing: -0.35,
   },
   section: {
-    fontSize: 18,
-    lineHeight: 23,
-    fontWeight: '600' as const,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '650' as const,
   },
   body: {
-    fontSize: 15.5,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '400' as const,
   },
   metadata: {
@@ -29,12 +29,12 @@ export const typeScale = {
   caption: {
     fontSize: 11.5,
     lineHeight: 15,
-    fontWeight: '500' as const,
+    fontWeight: '550' as const,
   },
   metric: {
-    fontSize: 22,
-    lineHeight: 26,
-    fontWeight: '600' as const,
+    fontSize: 21,
+    lineHeight: 25,
+    fontWeight: '650' as const,
     fontVariant: ['tabular-nums'] as const,
   },
 } as const;
