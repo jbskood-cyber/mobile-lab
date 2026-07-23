@@ -6,7 +6,7 @@ export type IconName =
   | 'play' | 'more' | 'star' | 'filter' | 'home' | 'folder' | 'bars'
   | 'search' | 'briefcase' | 'book' | 'heart' | 'grid' | 'bulb'
   | 'chevron-right' | 'chevron-left' | 'chevron-down' | 'sliders' | 'pause' | 'stop'
-  | 'previous' | 'target' | 'archive' | 'bell' | 'repeat' | 'note'
+  | 'previous' | 'target' | 'archive' | 'inbox' | 'bell' | 'repeat' | 'note'
   | 'checklist' | 'copy' | 'tomorrow' | 'trash' | 'flame' | 'edit';
 
 type Props = {
@@ -49,6 +49,7 @@ export function FocoIcon({ name, size = 24, color = '#F7F7F8', strokeWidth = 1.8
       {name === 'previous' && <><Line x1="7" y1="6" x2="7" y2="18" {...common}/><Path d="m18 6-8 6 8 6z" {...common}/></>}
       {name === 'target' && <><Circle cx="12" cy="12" r="8.5" {...common}/><Circle cx="12" cy="12" r="4.5" {...common}/><Circle cx="12" cy="12" r="1" fill={color}/><Line x1="15" y1="9" x2="21" y2="3" {...common}/></>}
       {name === 'archive' && <><Rect x="4" y="7" width="16" height="13" rx="2" {...common}/><Path d="M3 4h18v4H3zM9 12h6" {...common}/></>}
+      {name === 'inbox' && <><Path d="M4 5h16l1 14H3z" {...common}/><Path d="M4 14h5l1.5 2h3L15 14h5" {...common}/></>}
       {name === 'bell' && <><Path d="M6 17h12l-1.5-2V10a4.5 4.5 0 0 0-9 0v5z" {...common}/><Path d="M10 20h4" {...common}/></>}
       {name === 'repeat' && <><Path d="M4 8h12l-3-3" {...common}/><Path d="m20 16H8l3 3" {...common}/><Path d="m16 8 2 2 2-2M8 16l-2-2-2 2" {...common}/></>}
       {name === 'note' && <><Path d="M6 3h9l3 3v15H6z" {...common}/><Path d="M14 3v4h4M9 11h6M9 15h6" {...common}/></>}
