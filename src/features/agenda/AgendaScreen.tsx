@@ -6,6 +6,7 @@ import { getAgendaBuckets, getTasksForDate, searchTasks } from '@/src/core/agend
 import { getTasksForCalendarDay } from '@/src/core/calendar';
 import { useFocoStore } from '@/src/core/FocoStore';
 import { DAY_MS, startOfLocalDay, type Task } from '@/src/core/model';
+import { RoutinesSheet } from '@/src/features/routines/RoutinesSheet';
 import { TaskEditorSheet } from '@/src/features/tasks/TaskEditorSheet';
 import { TaskRow } from '@/src/features/tasks/TaskRow';
 import { FocoIcon } from '@/src/ui/FocoIcon';
@@ -30,6 +31,7 @@ export function AgendaScreen() {
   const [monthAnchor, setMonthAnchor] = useState(startOfLocalDay(Date.now()));
   const [query, setQuery] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
+  const [routinesOpen, setRoutinesOpen] = useState(false);
   const [draftStart, setDraftStart] = useState<number | undefined>();
   const buckets = useMemo(() => getAgendaBuckets(state), [state]);
   const projectMap = useMemo(() => new Map(state.projects.map((project) => [project.id, project.name])), [state.projects]);
@@ -73,8 +75,14 @@ export function AgendaScreen() {
           {query ? <Pressable accessibilityLabel="Limpiar búsqueda" onPress={() => setQuery('')} style={({ pressed }) => [styles.clear, pressed && pressedStyle]}><FocoIcon name="plus" size={16} color={theme.colors.muted} style={styles.closeIcon} /></Pressable> : null}
         </View>
 
-        <View style={[styles.segmented, { backgroundColor: theme.colors.panelSoft, borderColor: theme.colors.borderSoft }]}>
-          {(['Calendario', 'Día', 'Listas'] as AgendaMode[]).map((item) => <Pressable key={item} accessibilityRole="tab" accessibilityState={{ selected: mode === item }} onPress={() => { setMode(item); setQuery(''); hapticSelection(); }} style={({ pressed }) => [styles.segment, mode === item && { backgroundColor: theme.colors.inverse }, pressed && pressedStyle]}><Text style={[styles.segmentText, { color: mode === item ? theme.colors.inverseText : theme.colors.muted }]}>{item}</Text></Pressable>)}
+        <View style={styles.modeRow}>
+          <View style={[styles.segmented, { backgroundColor: theme.colors.panelSoft, borderColor: theme.colors.borderSoft }]}>
+            {(['Calendario', 'Día', 'Listas'] as AgendaMode[]).map((item) => <Pressable key={item} accessibilityRole="tab" accessibilityState={{ selected: mode === item }} onPress={() => { setMode(item); setQuery(''); hapticSelection(); }} style={({ pressed }) => [styles.segment, mode === item && { backgroundColor: theme.colors.inverse }, pressed && pressedStyle]}><Text style={[styles.segmentText, { color: mode === item ? theme.colors.inverseText : theme.colors.muted }]}>{item}</Text></Pressable>)}
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Abrir rutinas" onPress={() => { setRoutinesOpen(true); hapticSelection(); }} style={({ pressed }) => [styles.routinesButton, { backgroundColor: theme.colors.panel, borderColor: theme.colors.border }, pressed && pressedStyle]}>
+            <FocoIcon name="repeat" size={17} color={theme.colors.text} />
+            {state.routines.length > 0 ? <Text style={[styles.routineCount, { color: theme.colors.muted }]}>{state.routines.length}</Text> : null}
+          </Pressable>
         </View>
 
         {mode === 'Calendario' ? (
@@ -107,6 +115,7 @@ export function AgendaScreen() {
         ) : null}
       </FocoScreen>
       <TaskEditorSheet visible={editorOpen} defaultDueAt={draftStart ? draftStart + state.planning.defaultTaskDurationMinutes * 60_000 : selectedDate + 18 * 60 * 60 * 1000} defaultPlannedStartAt={draftStart} onClose={() => { setEditorOpen(false); setDraftStart(undefined); }} />
+      <RoutinesSheet visible={routinesOpen} onClose={() => setRoutinesOpen(false)} />
     </>
   );
 }
@@ -121,9 +130,12 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontFamily: 'Manrope_400Regular', fontSize: 13.5, lineHeight: 18, paddingHorizontal: 9, paddingVertical: 10 },
   clear: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   closeIcon: { transform: [{ rotate: '45deg' }] },
-  segmented: { minHeight: 44, marginTop: 8, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', padding: 3 },
+  modeRow: { minHeight: 44, marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  segmented: { flex: 1, minHeight: 44, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', padding: 3 },
   segment: { flex: 1, minHeight: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   segmentText: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, lineHeight: 15 },
+  routinesButton: { width: 48, height: 44, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  routineCount: { position: 'absolute', right: 5, top: 4, fontFamily: 'Manrope_600SemiBold', fontSize: 8.5, lineHeight: 11 },
   dayNavigator: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, marginTop: 5 },
   dayArrow: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   todayButton: { minHeight: 36, borderWidth: StyleSheet.hairlineWidth, borderRadius: 11, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
