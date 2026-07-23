@@ -26,6 +26,7 @@ type FocoUIValue = {
   keyboardVisible: boolean;
   appMenuVisible: boolean;
   resetArmed: boolean;
+  focusImmersive: boolean;
   undo: UndoRequest | null;
   openAppMenu: () => void;
   closeAppMenu: () => void;
@@ -34,6 +35,7 @@ type FocoUIValue = {
   requestReset: () => void;
   cancelReset: () => void;
   completeReset: () => void;
+  setFocusImmersive: (active: boolean) => void;
   showUndo: (message: string, onAction: () => void, actionLabel?: string) => void;
   runUndo: () => void;
   dismissUndo: () => void;
@@ -47,6 +49,7 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(reduceUIState, undefined, createUIState);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [appMenuVisible, setAppMenuVisible] = useState(false);
+  const [focusImmersive, setFocusImmersive] = useState(false);
   const [undo, setUndo] = useState<UndoRequest | null>(null);
   const undoId = useRef(0);
   const undoRef = useRef<UndoRequest | null>(null);
@@ -123,6 +126,7 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
     keyboardVisible,
     appMenuVisible,
     resetArmed: state.resetArmed,
+    focusImmersive,
     undo,
     openAppMenu,
     closeAppMenu,
@@ -131,6 +135,7 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
     requestReset,
     cancelReset,
     completeReset,
+    setFocusImmersive,
     showUndo,
     runUndo,
     dismissUndo,
@@ -141,6 +146,7 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
     state.resetArmed,
     keyboardVisible,
     appMenuVisible,
+    focusImmersive,
     undo,
     openAppMenu,
     closeAppMenu,
