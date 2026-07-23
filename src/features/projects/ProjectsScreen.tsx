@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useFocoStore } from '@/src/core/FocoStore';
@@ -6,25 +6,24 @@ import { formatDuration, getProjectMetrics, type Project, type ProjectIcon, type
 import { FocoIcon, type IconName } from '@/src/ui/FocoIcon';
 import { FocoScreen, Surface } from '@/src/ui/FocoShell';
 import { FieldLabel, FocoSheet, SheetButton } from '@/src/ui/FocoSheet';
+import { useFocoUI } from '@/src/ui/FocoUIContext';
 import { ProgressRing } from '@/src/ui/ProgressRing';
-import { UndoBar } from '@/src/ui/UndoBar';
 import { foco } from '@/src/ui/focoTheme';
 import { hapticSelection, hapticSuccess, hapticWarning, pressedStyle } from '@/src/ui/premium';
 
 type Filter = 'Todos' | 'Activos' | 'Archivados';
 const iconOptions: ProjectIcon[] = ['briefcase', 'book', 'heart', 'grid', 'bulb', 'archive'];
-
 type ProjectRowModel = { project: Project; metrics: ProjectMetrics };
 
 export function ProjectsScreen() {
   const { state, addProject, toggleProjectArchived } = useFocoStore();
+  const { showUndo } = useFocoUI();
   const [filter, setFilter] = useState<Filter>('Todos');
   const [query, setQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [projectIcon, setProjectIcon] = useState<ProjectIcon>('grid');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [undoProject, setUndoProject] = useState<Project | null>(null);
 
   const activeCount = state.projects.filter((project) => !project.archived).length;
   const archivedCount = state.projects.length - activeCount;
@@ -35,12 +34,6 @@ export function ProjectsScreen() {
   }).map((project) => ({ project, metrics: getProjectMetrics(state, project.id) })), [filter, query, state]);
   const active = visible.filter((row) => !row.project.archived);
   const archived = visible.filter((row) => row.project.archived);
-
-  useEffect(() => {
-    if (!undoProject) return;
-    const timeout = setTimeout(() => setUndoProject(null), 4500);
-    return () => clearTimeout(timeout);
-  }, [undoProject]);
 
   const openCreate = () => {
     setProjectName('');
@@ -62,16 +55,12 @@ export function ProjectsScreen() {
     if (!selectedProject) return;
     const project = selectedProject;
     toggleProjectArchived(project.id);
-    setUndoProject(project);
-    hapticWarning();
     setSelectedProject(null);
-  };
-
-  const undoArchive = () => {
-    if (!undoProject) return;
-    toggleProjectArchived(undoProject.id);
-    setUndoProject(null);
-    hapticSelection();
+    showUndo(`${project.name} ${project.archived ? 'restaurado' : 'archivado'}`, () => {
+      toggleProjectArchived(project.id);
+      hapticSelection();
+    });
+    hapticWarning();
   };
 
   return (
@@ -156,7 +145,6 @@ export function ProjectsScreen() {
       </FocoSheet>
 
       <ProjectDetailSheet project={selectedProject} state={state} onClose={() => setSelectedProject(null)} onArchive={archiveSelected} />
-      {undoProject ? <UndoBar message={`${undoProject.name} ${undoProject.archived ? 'restaurado' : 'archivado'}`} onAction={undoArchive} /> : null}
     </FocoScreen>
   );
 }
