@@ -1,11 +1,5 @@
-import { PlaceholderScreen } from '@/src/ui/PlaceholderScreen';
+import { FocusScreen } from '@/src/features/focus/FocusScreen';
 
 export default function FocusRoute() {
-  return (
-    <PlaceholderScreen
-      eyebrow="CONCENTRA"
-      title="Enfoque"
-      description="El temporizador y los ciclos Pomodoro se construirán sobre esta ruta sin cambiar la navegación ni el sistema visual."
-    />
-  );
+  return <FocusScreen />;
 }
