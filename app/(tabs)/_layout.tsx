@@ -1,68 +1,23 @@
 import { Tabs } from 'expo-router';
 
-import { TabGlyph } from '@/src/ui/TabBar';
-import { colors } from '@/src/ui/theme';
+import { FocoTabBar } from '@/src/ui/FocoTabBar';
+import { foco } from '@/src/ui/focoTheme';
 
 export default function TabsLayout() {
   return (
     <Tabs
+      tabBar={(props) => <FocoTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: colors.background },
-        tabBarActiveTintColor: colors.text,
-        tabBarInactiveTintColor: colors.inactive,
+        sceneStyle: { backgroundColor: foco.colors.bg },
         tabBarHideOnKeyboard: true,
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-          marginTop: 1,
-        },
-        tabBarStyle: {
-          height: 76,
-          paddingTop: 8,
-          paddingBottom: 8,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          backgroundColor: colors.surfaceSoft,
-        },
+        animation: 'fade',
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Hoy',
-          tabBarIcon: ({ focused }) => (
-            <TabGlyph name="today" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="projects"
-        options={{
-          title: 'Proyectos',
-          tabBarIcon: ({ focused }) => (
-            <TabGlyph name="projects" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="focus"
-        options={{
-          title: 'Enfoque',
-          tabBarIcon: ({ focused }) => (
-            <TabGlyph name="focus" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="stats"
-        options={{
-          title: 'Estadísticas',
-          tabBarIcon: ({ focused }) => (
-            <TabGlyph name="stats" focused={focused} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="index" options={{ title: 'Hoy' }} />
+      <Tabs.Screen name="projects" options={{ title: 'Proyectos' }} />
+      <Tabs.Screen name="focus" options={{ title: 'Enfoque' }} />
+      <Tabs.Screen name="stats" options={{ title: 'Estadísticas' }} />
     </Tabs>
   );
 }
