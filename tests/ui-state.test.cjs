@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { createUIState, reduceUIState } = require('../.core-test-dist/uiState.js');
+const { createUIState, reduceUIState } = require('../.core-test-dist/ui/uiState.js');
 
 test('overlay ownership never becomes negative', () => {
   const state = reduceUIState(createUIState(), { type: 'close-overlay' });
