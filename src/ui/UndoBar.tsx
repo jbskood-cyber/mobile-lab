@@ -25,7 +25,6 @@ const styles = StyleSheet.create({
   bar: {
     position: 'absolute',
     zIndex: 50,
-    elevation: 14,
     left: 16,
     right: 16,
     minHeight: 56,
