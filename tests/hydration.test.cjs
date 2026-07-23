@@ -13,9 +13,10 @@ test('hydration selects persisted state without replacing it with seed data', ()
   const hydrated = resolveHydratedState(JSON.stringify(persisted), NOW);
 
   assert.equal(hydrated.projects[0].name, 'Persistido');
+  assert.equal(hydrated.version, 2);
 });
 
-test('empty or invalid storage falls back to a valid seed state', () => {
-  assert.equal(resolveHydratedState(null, NOW).version, 1);
-  assert.equal(resolveHydratedState('{bad json', NOW).version, 1);
+test('empty or invalid storage falls back to a valid v2 state', () => {
+  assert.equal(resolveHydratedState(null, NOW).version, 2);
+  assert.equal(resolveHydratedState('{bad json', NOW).version, 2);
 });

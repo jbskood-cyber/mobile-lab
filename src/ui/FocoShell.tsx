@@ -27,7 +27,7 @@ export function FocoScreen({
   rightAccessibilityLabel = 'Acción de pantalla',
   onRightPress,
   scroll = true,
-  contentBottomPadding = 108,
+  contentBottomPadding = 104,
   children,
 }: ScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
@@ -41,24 +41,12 @@ export function FocoScreen({
   const content = (
     <View style={[styles.content, { paddingBottom: contentBottomPadding }]}> 
       <View style={styles.toolbar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Abrir menú de FOCO"
-          hitSlop={8}
-          onPress={openAppMenu}
-          style={({ pressed }) => [styles.iconButton, pressed && pressedStyle]}
-        >
-          <FocoIcon name="menu" size={27} color={foco.colors.text} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Abrir menú de FOCO" hitSlop={8} onPress={openAppMenu} style={({ pressed }) => [styles.iconButton, pressed && pressedStyle]}>
+          <FocoIcon name="menu" size={25} color={foco.colors.text} />
         </Pressable>
         {rightIcon ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={rightAccessibilityLabel}
-            hitSlop={8}
-            style={({ pressed }) => [styles.iconButton, pressed && pressedStyle]}
-            onPress={onRightPress}
-          >
-            <FocoIcon name={rightIcon} size={25} color={foco.colors.text} />
+          <Pressable accessibilityRole="button" accessibilityLabel={rightAccessibilityLabel} hitSlop={8} style={({ pressed }) => [styles.iconButton, pressed && pressedStyle]} onPress={onRightPress}>
+            <FocoIcon name={rightIcon} size={24} color={foco.colors.text} />
           </Pressable>
         ) : <View style={styles.iconButton} />}
       </View>
@@ -70,17 +58,8 @@ export function FocoScreen({
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <View pointerEvents="none" style={styles.ambientTop} />
       {scroll ? (
-        <ScrollView
-          ref={scrollRef}
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          automaticallyAdjustKeyboardInsets
-        >
+        <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets>
           {content}
         </ScrollView>
       ) : content}
@@ -112,16 +91,15 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: foco.colors.bg },
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1 },
-  content: { paddingHorizontal: 20 },
-  ambientTop: { position: 'absolute', top: -130, right: -90, width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255,255,255,0.016)' },
-  toolbar: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  content: { paddingHorizontal: 16 },
+  toolbar: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   title: { color: foco.colors.text, ...typeScale.display },
-  subtitle: { color: foco.colors.muted, ...typeScale.body, marginTop: 4 },
+  subtitle: { color: foco.colors.muted, ...typeScale.body, marginTop: 2 },
   surface: { backgroundColor: foco.colors.panel, borderWidth: 1, borderColor: foco.colors.border, borderRadius: foco.radius.surface },
-  sectionRow: { marginTop: 20, marginBottom: 10, minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitleLine: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 },
+  sectionRow: { marginTop: 18, marginBottom: 7, minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitleLine: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 7, paddingRight: 8 },
   sectionTitle: { color: foco.colors.text, ...typeScale.section },
-  sectionDetail: { flexShrink: 1, color: foco.colors.muted, fontSize: 14, lineHeight: 19 },
-  eyebrow: { color: foco.colors.muted, ...typeScale.caption, fontWeight: '700', letterSpacing: 3.2 },
+  sectionDetail: { flexShrink: 1, color: foco.colors.muted, fontSize: 13, lineHeight: 18 },
+  eyebrow: { color: foco.colors.muted, ...typeScale.caption, fontWeight: '700', letterSpacing: 2.6 },
 });

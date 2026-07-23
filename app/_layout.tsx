@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 
 import { FocoStoreProvider } from '@/src/core/FocoStore';
+import { NotificationObserver } from '@/src/platform/NotificationObserver';
 import { FocoAppMenu } from '@/src/ui/FocoAppMenu';
 import { FocoSkeleton } from '@/src/ui/FocoSkeleton';
 import { FocoUIProvider, useFocoUI } from '@/src/ui/FocoUIContext';
@@ -40,6 +41,7 @@ export default function RootLayout() {
       <FocoUIProvider>
         <View style={styles.root}>
           <FocoSystemChrome />
+          <NotificationObserver />
           <Stack
             screenOptions={{
               headerShown: false,
@@ -55,6 +57,4 @@ export default function RootLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: foco.colors.bg },
-});
+const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: foco.colors.bg } });

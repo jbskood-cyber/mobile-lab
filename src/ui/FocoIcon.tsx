@@ -1,12 +1,13 @@
 import type { ComponentProps } from 'react';
 import Svg, { Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
 
-type IconName =
+export type IconName =
   | 'menu' | 'calendar' | 'clock' | 'list' | 'circle' | 'check' | 'plus'
   | 'play' | 'more' | 'star' | 'filter' | 'home' | 'folder' | 'bars'
   | 'search' | 'briefcase' | 'book' | 'heart' | 'grid' | 'bulb'
-  | 'chevron-right' | 'chevron-left' | 'sliders' | 'pause' | 'stop'
-  | 'previous' | 'target' | 'archive';
+  | 'chevron-right' | 'chevron-left' | 'chevron-down' | 'sliders' | 'pause' | 'stop'
+  | 'previous' | 'target' | 'archive' | 'bell' | 'repeat' | 'note'
+  | 'checklist' | 'copy' | 'tomorrow' | 'trash' | 'flame' | 'edit';
 
 type Props = {
   name: IconName;
@@ -20,7 +21,7 @@ export function FocoIcon({ name, size = 24, color = '#F7F7F8', strokeWidth = 1.8
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden {...props}>
       {name === 'menu' && <><Line x1="4" y1="6" x2="20" y2="6" {...common}/><Line x1="4" y1="12" x2="20" y2="12" {...common}/><Line x1="4" y1="18" x2="20" y2="18" {...common}/></>}
-      {name === 'calendar' && <><Rect x="4" y="5" width="16" height="15" rx="2" {...common}/><Line x1="8" y1="3" x2="8" y2="7" {...common}/><Line x1="16" y1="3" x2="16" y2="7" {...common}/><Line x1="4" y1="9" x2="20" y2="9" {...common}/><Line x1="8" y1="13" x2="16" y2="13" {...common}/></>}
+      {name === 'calendar' && <><Rect x="4" y="5" width="16" height="15" rx="2" {...common}/><Line x1="8" y1="3" x2="8" y2="7" {...common}/><Line x1="16" y1="3" x2="16" y2="7" {...common}/><Line x1="4" y1="9" x2="20" y2="9" {...common}/></>}
       {name === 'clock' && <><Circle cx="12" cy="12" r="8.5" {...common}/><Polyline points="12 7 12 12 16 14" {...common}/></>}
       {name === 'list' && <><Line x1="8" y1="7" x2="20" y2="7" {...common}/><Line x1="8" y1="12" x2="20" y2="12" {...common}/><Line x1="8" y1="17" x2="20" y2="17" {...common}/><Circle cx="4" cy="7" r=".7" fill={color}/><Circle cx="4" cy="12" r=".7" fill={color}/><Circle cx="4" cy="17" r=".7" fill={color}/></>}
       {name === 'circle' && <Circle cx="12" cy="12" r="8" {...common}/>} 
@@ -41,14 +42,22 @@ export function FocoIcon({ name, size = 24, color = '#F7F7F8', strokeWidth = 1.8
       {name === 'bulb' && <><Path d="M8 15c-1.5-1.2-2.5-3-2.5-5A6.5 6.5 0 0 1 12 3.5 6.5 6.5 0 0 1 18.5 10c0 2-1 3.8-2.5 5l-1 1.5H9z" {...common}/><Line x1="9" y1="20" x2="15" y2="20" {...common}/></>}
       {name === 'chevron-right' && <Polyline points="9 5 16 12 9 19" {...common}/>} 
       {name === 'chevron-left' && <Polyline points="15 5 8 12 15 19" {...common}/>} 
-      {name === 'sliders' && <><Line x1="4" y1="7" x2="20" y2="7" {...common}/><Circle cx="9" cy="7" r="2" {...common} fill="#050607"/><Line x1="4" y1="12" x2="20" y2="12" {...common}/><Circle cx="15" cy="12" r="2" {...common} fill="#050607"/><Line x1="4" y1="17" x2="20" y2="17" {...common}/><Circle cx="11" cy="17" r="2" {...common} fill="#050607"/></>}
+      {name === 'chevron-down' && <Polyline points="5 9 12 16 19 9" {...common}/>} 
+      {name === 'sliders' && <><Line x1="4" y1="7" x2="20" y2="7" {...common}/><Circle cx="9" cy="7" r="2" {...common}/><Line x1="4" y1="12" x2="20" y2="12" {...common}/><Circle cx="15" cy="12" r="2" {...common}/><Line x1="4" y1="17" x2="20" y2="17" {...common}/><Circle cx="11" cy="17" r="2" {...common}/></>}
       {name === 'pause' && <><Rect x="7" y="5" width="3.5" height="14" rx="1" fill={color}/><Rect x="13.5" y="5" width="3.5" height="14" rx="1" fill={color}/></>}
       {name === 'stop' && <Rect x="7" y="7" width="10" height="10" rx="1.5" fill={color}/>} 
       {name === 'previous' && <><Line x1="7" y1="6" x2="7" y2="18" {...common}/><Path d="m18 6-8 6 8 6z" {...common}/></>}
       {name === 'target' && <><Circle cx="12" cy="12" r="8.5" {...common}/><Circle cx="12" cy="12" r="4.5" {...common}/><Circle cx="12" cy="12" r="1" fill={color}/><Line x1="15" y1="9" x2="21" y2="3" {...common}/></>}
       {name === 'archive' && <><Rect x="4" y="7" width="16" height="13" rx="2" {...common}/><Path d="M3 4h18v4H3zM9 12h6" {...common}/></>}
+      {name === 'bell' && <><Path d="M6 17h12l-1.5-2V10a4.5 4.5 0 0 0-9 0v5z" {...common}/><Path d="M10 20h4" {...common}/></>}
+      {name === 'repeat' && <><Path d="M4 8h12l-3-3" {...common}/><Path d="m20 16H8l3 3" {...common}/><Path d="m16 8 2 2 2-2M8 16l-2-2-2 2" {...common}/></>}
+      {name === 'note' && <><Path d="M6 3h9l3 3v15H6z" {...common}/><Path d="M14 3v4h4M9 11h6M9 15h6" {...common}/></>}
+      {name === 'checklist' && <><Polyline points="3 7 5 9 8 5" {...common}/><Line x1="10" y1="7" x2="21" y2="7" {...common}/><Polyline points="3 15 5 17 8 13" {...common}/><Line x1="10" y1="15" x2="21" y2="15" {...common}/></>}
+      {name === 'copy' && <><Rect x="8" y="8" width="12" height="12" rx="2" {...common}/><Path d="M16 8V4H4v12h4" {...common}/></>}
+      {name === 'tomorrow' && <><Path d="M5 12h12" {...common}/><Polyline points="13 8 17 12 13 16" {...common}/><Line x1="5" y1="5" x2="5" y2="19" {...common}/></>}
+      {name === 'trash' && <><Path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" {...common}/></>}
+      {name === 'flame' && <Path d="M12 3c2 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-4 3-6 0 3 1 4 2 5 1-2 1-5 0-8Z" {...common}/>} 
+      {name === 'edit' && <><Path d="m5 19 3.5-.7L19 7.8 16.2 5 5.7 15.5z" {...common}/><Line x1="14.5" y1="6.7" x2="17.3" y2="9.5" {...common}/></>}
     </Svg>
   );
 }
-
-export type { IconName };

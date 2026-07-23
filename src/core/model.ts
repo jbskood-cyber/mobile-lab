@@ -1,13 +1,31 @@
 export type ProjectIcon = 'briefcase' | 'book' | 'heart' | 'grid' | 'bulb' | 'archive';
 export type TaskPriority = 'Alta' | 'Media' | 'Baja';
 export type FocusMode = 'pomodoro' | 'stopwatch';
+export type FocusPhase = 'focus' | 'shortBreak' | 'longBreak';
+export type RecurrenceKind = 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly';
+
+export type RecurrenceRule = {
+  kind: RecurrenceKind;
+  interval: number;
+};
+
+export type Subtask = {
+  id: string;
+  title: string;
+  completed: boolean;
+  createdAt: number;
+  completedAt?: number;
+};
 
 export type Project = {
   id: string;
   name: string;
   icon: ProjectIcon;
   archived: boolean;
+  description: string;
+  sortOrder: number;
   createdAt: number;
+  updatedAt: number;
 };
 
 export type Task = {
@@ -18,24 +36,78 @@ export type Task = {
   completed: boolean;
   inProgress: boolean;
   favorite: boolean;
+  notes: string;
+  dueAt?: number;
+  reminderAt?: number;
+  recurrence: RecurrenceRule;
+  estimatedPomodoros: number;
+  subtasks: Subtask[];
+  sortOrder: number;
+  notificationId?: string;
   createdAt: number;
+  updatedAt: number;
   completedAt?: number;
 };
 
 export type FocusSession = {
   id: string;
   projectId: string;
+  taskId?: string;
   mode: FocusMode;
+  phase: FocusPhase;
   startedAt: number;
   endedAt: number;
   durationSec: number;
+  plannedSec: number;
+  completed: boolean;
+  interrupted: boolean;
+  cycleNumber: number;
+};
+
+export type FocusPreferences = {
+  focusMinutes: number;
+  shortBreakMinutes: number;
+  longBreakMinutes: number;
+  longBreakEvery: number;
+  targetCycles: number;
+  autoStartBreaks: boolean;
+  autoStartFocus: boolean;
+  continuousMode: boolean;
+  keepAwake: boolean;
+  vibrationEnabled: boolean;
+  soundEnabled: boolean;
+  notifyBeforeEndMinutes: number;
 };
 
 export type FocoState = {
-  version: 1;
+  version: 2;
   projects: Project[];
   tasks: Task[];
   sessions: FocusSession[];
+  preferences: FocusPreferences;
+};
+
+export type TaskDraft = {
+  title: string;
+  projectId?: string;
+  priority?: TaskPriority;
+  notes?: string;
+  dueAt?: number;
+  reminderAt?: number;
+  recurrence?: Partial<RecurrenceRule>;
+  estimatedPomodoros?: number;
+  subtasks?: Array<string | Subtask>;
+  inProgress?: boolean;
+  favorite?: boolean;
+};
+
+export type SessionDraft = Omit<FocusSession, 'id' | 'phase' | 'plannedSec' | 'completed' | 'interrupted' | 'cycleNumber'> & Partial<Pick<FocusSession, 'phase' | 'plannedSec' | 'completed' | 'interrupted' | 'cycleNumber'>>;
+
+export type TaskCompletionResult = {
+  state: FocoState;
+  originalTask: Task;
+  completedTask: Task;
+  generatedTask?: Task;
 };
 
 export type TodaySummary = {
@@ -50,123 +122,251 @@ export type ProjectMetrics = {
   completedCount: number;
   progress: number;
   focusSeconds: number;
+  completedPomodoros: number;
+  plannedPomodoros: number;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function id(prefix: string, suffix: string | number) {
-  return `${prefix}-${suffix}`;
+export const defaultFocusPreferences: FocusPreferences = {
+  focusMinutes: 50,
+  shortBreakMinutes: 10,
+  longBreakMinutes: 20,
+  longBreakEvery: 4,
+  targetCycles: 3,
+  autoStartBreaks: false,
+  autoStartFocus: false,
+  continuousMode: false,
+  keepAwake: true,
+  vibrationEnabled: true,
+  soundEnabled: true,
+  notifyBeforeEndMinutes: 1,
+};
+
+function makeId(prefix: string, now: number, suffix = 0) {
+  return `${prefix}-${now.toString(36)}-${suffix.toString(36)}`;
 }
 
-function startOfDay(timestamp: number) {
+export function startOfLocalDay(timestamp: number) {
   const date = new Date(timestamp);
   date.setHours(0, 0, 0, 0);
   return date.getTime();
 }
 
+export function endOfLocalDay(timestamp: number) {
+  return startOfLocalDay(timestamp) + DAY_MS;
+}
+
 export function createInitialState(now = Date.now()): FocoState {
-  const projects: Project[] = [
-    { id: 'plan-maestro', name: 'Plan maestro', icon: 'briefcase', archived: false, createdAt: now - 60 * DAY_MS },
-    { id: 'trabajo', name: 'Trabajo', icon: 'briefcase', archived: false, createdAt: now - 50 * DAY_MS },
-    { id: 'estudios', name: 'Estudios', icon: 'book', archived: false, createdAt: now - 45 * DAY_MS },
-    { id: 'salud', name: 'Salud', icon: 'heart', archived: false, createdAt: now - 30 * DAY_MS },
-    { id: 'personal', name: 'Personal', icon: 'grid', archived: false, createdAt: now - 25 * DAY_MS },
-    { id: 'ideas', name: 'Ideas', icon: 'bulb', archived: false, createdAt: now - 10 * DAY_MS },
-    { id: 'archivo', name: 'Archivo', icon: 'archive', archived: true, createdAt: now - 90 * DAY_MS },
+  const projectSeed: Array<[string, string, ProjectIcon]> = [
+    ['personal', 'Personal', 'grid'],
+    ['trabajo', 'Trabajo', 'briefcase'],
+    ['estudios', 'Estudios', 'book'],
+    ['salud', 'Salud', 'heart'],
+    ['ideas', 'Ideas', 'bulb'],
   ];
-
-  const taskSeed: Array<[string, string, string, TaskPriority, boolean, boolean, boolean]> = [
-    ['objectives-q2', 'Definir objetivos Q2', 'plan-maestro', 'Alta', false, false, false],
-    ['review-metrics', 'Revisar métricas', 'plan-maestro', 'Media', false, true, true],
-    ['user-research', 'Investigación de usuarios', 'estudios', 'Media', false, false, false],
-    ['onboarding-flow', 'Diseñar flujo de onboarding', 'trabajo', 'Alta', false, false, false],
-    ['document-api', 'Documentar API', 'personal', 'Baja', false, false, true],
-    ['close-notes', 'Cerrar notas de ayer', 'personal', 'Baja', true, false, false],
-    ['mobility', 'Rutina de movilidad', 'salud', 'Media', true, false, false],
-    ['study-optics', 'Repasar óptica física', 'estudios', 'Alta', true, false, false],
-  ];
-
-  const tasks = taskSeed.map(([taskId, title, projectId, priority, completed, inProgress, favorite], index): Task => ({
-    id: taskId,
-    title,
-    projectId,
-    priority,
-    completed,
-    inProgress,
-    favorite,
-    createdAt: now - (index + 1) * DAY_MS,
-    completedAt: completed ? now - Math.min(index, 2) * DAY_MS : undefined,
-  }));
-
-  const durations = [48, 36, 52, 28, 55, 42, 31, 46, 25, 50, 34, 44, 20, 38, 57, 29, 41, 33];
-  const sessions: FocusSession[] = durations.map((minutes, index) => {
-    const dayOffset = index % 12;
-    const endedAt = startOfDay(now - dayOffset * DAY_MS) + (9 + (index % 6)) * 60 * 60 * 1000;
-    return {
-      id: id('session', index + 1),
-      projectId: projects[index % 5]?.id ?? 'personal',
-      mode: index % 4 === 0 ? 'stopwatch' : 'pomodoro',
-      startedAt: endedAt - minutes * 60 * 1000,
-      endedAt,
-      durationSec: minutes * 60,
-    };
-  });
-
-  return { version: 1, projects, tasks, sessions };
-}
-
-export function normalizeState(value: unknown, now = Date.now()): FocoState {
-  if (!value || typeof value !== 'object') return createInitialState(now);
-  const candidate = value as Partial<FocoState>;
-  if (candidate.version !== 1 || !Array.isArray(candidate.projects) || !Array.isArray(candidate.tasks) || !Array.isArray(candidate.sessions)) {
-    return createInitialState(now);
-  }
-  return candidate as FocoState;
-}
-
-export function addTask(state: FocoState, title: string, projectId = 'personal', priority: TaskPriority = 'Media', now = Date.now()): FocoState {
-  const normalized = title.trim();
-  if (!normalized) return state;
-  const resolvedProjectId = state.projects.some((project) => project.id === projectId) ? projectId : state.projects[0]?.id ?? 'personal';
-  const task: Task = {
-    id: id('task', `${now.toString(36)}-${normalized.length}`),
-    title: normalized,
-    projectId: resolvedProjectId,
-    priority,
-    completed: false,
-    inProgress: false,
-    favorite: false,
+  const projects = projectSeed.map(([id, name, icon], index): Project => ({
+    id,
+    name,
+    icon,
+    archived: false,
+    description: '',
+    sortOrder: index,
     createdAt: now,
+    updatedAt: now,
+  }));
+  return { version: 2, projects, tasks: [], sessions: [], preferences: { ...defaultFocusPreferences } };
+}
+
+export function normalizeRecurrence(value?: Partial<RecurrenceRule>): RecurrenceRule {
+  const kind: RecurrenceKind = value?.kind && ['none', 'daily', 'weekdays', 'weekly', 'monthly'].includes(value.kind) ? value.kind : 'none';
+  return { kind, interval: Math.max(1, Math.round(value?.interval ?? 1)) };
+}
+
+function normalizeSubtasks(values: Array<string | Subtask> | undefined, now: number, prefix: string): Subtask[] {
+  return (values ?? []).map((value, index) => typeof value === 'string' ? {
+    id: makeId(`${prefix}-subtask`, now, index + 1),
+    title: value.trim(),
+    completed: false,
+    createdAt: now,
+  } : {
+    ...value,
+    id: value.id || makeId(`${prefix}-subtask`, now, index + 1),
+    title: value.title.trim(),
+    completed: Boolean(value.completed),
+    createdAt: Number(value.createdAt || now),
+  }).filter((subtask) => subtask.title.length > 0);
+}
+
+function resolveProjectId(state: FocoState, projectId?: string) {
+  if (projectId && state.projects.some((project) => project.id === projectId)) return projectId;
+  return state.projects.find((project) => !project.archived)?.id ?? state.projects[0]?.id ?? 'personal';
+}
+
+export function createTask(state: FocoState, draft: TaskDraft, now = Date.now()): FocoState {
+  const title = draft.title.trim();
+  if (!title) return state;
+  const id = makeId('task', now, state.tasks.length + 1);
+  const task: Task = {
+    id,
+    title,
+    projectId: resolveProjectId(state, draft.projectId),
+    priority: draft.priority ?? 'Media',
+    completed: false,
+    inProgress: Boolean(draft.inProgress),
+    favorite: Boolean(draft.favorite),
+    notes: draft.notes?.trim() ?? '',
+    dueAt: Number.isFinite(draft.dueAt) ? draft.dueAt : undefined,
+    reminderAt: Number.isFinite(draft.reminderAt) ? draft.reminderAt : undefined,
+    recurrence: normalizeRecurrence(draft.recurrence),
+    estimatedPomodoros: Math.max(1, Math.round(draft.estimatedPomodoros ?? 1)),
+    subtasks: normalizeSubtasks(draft.subtasks, now, id),
+    sortOrder: state.tasks.length,
+    createdAt: now,
+    updatedAt: now,
   };
   return { ...state, tasks: [task, ...state.tasks] };
 }
 
-export function updateTask(state: FocoState, taskId: string, patch: Partial<Pick<Task, 'title' | 'projectId' | 'priority' | 'inProgress' | 'favorite'>>): FocoState {
-  return {
-    ...state,
-    tasks: state.tasks.map((task) => task.id === taskId ? {
-      ...task,
-      ...patch,
-      title: patch.title === undefined ? task.title : patch.title.trim() || task.title,
-      projectId: patch.projectId && state.projects.some((project) => project.id === patch.projectId) ? patch.projectId : task.projectId,
-    } : task),
-  };
-}
-
-export function toggleTask(state: FocoState, taskId: string, now = Date.now()): FocoState {
+export function updateTaskV2(state: FocoState, taskId: string, patch: Partial<Omit<Task, 'id' | 'createdAt'>>, now = Date.now()): FocoState {
   return {
     ...state,
     tasks: state.tasks.map((task) => {
       if (task.id !== taskId) return task;
-      const completed = !task.completed;
+      const title = patch.title === undefined ? task.title : patch.title.trim() || task.title;
       return {
         ...task,
-        completed,
-        inProgress: completed ? false : task.inProgress,
-        completedAt: completed ? now : undefined,
+        ...patch,
+        title,
+        projectId: patch.projectId ? resolveProjectId(state, patch.projectId) : task.projectId,
+        priority: patch.priority ?? task.priority,
+        recurrence: patch.recurrence ? normalizeRecurrence(patch.recurrence) : task.recurrence,
+        estimatedPomodoros: patch.estimatedPomodoros === undefined ? task.estimatedPomodoros : Math.max(1, Math.round(patch.estimatedPomodoros)),
+        updatedAt: now,
       };
     }),
   };
+}
+
+function nextOccurrenceAt(base: number, recurrence: RecurrenceRule) {
+  const date = new Date(base);
+  if (recurrence.kind === 'daily') return base + recurrence.interval * DAY_MS;
+  if (recurrence.kind === 'weekly') return base + recurrence.interval * 7 * DAY_MS;
+  if (recurrence.kind === 'monthly') {
+    date.setMonth(date.getMonth() + recurrence.interval);
+    return date.getTime();
+  }
+  if (recurrence.kind === 'weekdays') {
+    let next = base;
+    let count = 0;
+    while (count < recurrence.interval) {
+      next += DAY_MS;
+      const day = new Date(next).getDay();
+      if (day !== 0 && day !== 6) count += 1;
+    }
+    return next;
+  }
+  return base;
+}
+
+function createNextOccurrence(state: FocoState, task: Task, now: number): Task | undefined {
+  if (task.recurrence.kind === 'none') return undefined;
+  const sourceDue = task.dueAt ?? now;
+  const dueAt = nextOccurrenceAt(sourceDue, task.recurrence);
+  const reminderOffset = task.reminderAt !== undefined && task.dueAt !== undefined ? task.dueAt - task.reminderAt : undefined;
+  const id = makeId('task', now + 1, state.tasks.length + 1);
+  return {
+    ...task,
+    id,
+    completed: false,
+    completedAt: undefined,
+    inProgress: false,
+    dueAt,
+    reminderAt: reminderOffset === undefined ? undefined : dueAt - reminderOffset,
+    notificationId: undefined,
+    subtasks: task.subtasks.map((subtask, index) => ({ ...subtask, id: makeId(`${id}-subtask`, now + 1, index + 1), completed: false, completedAt: undefined, createdAt: now + 1 })),
+    createdAt: now + 1,
+    updatedAt: now + 1,
+    sortOrder: state.tasks.length,
+  };
+}
+
+export function completeTask(state: FocoState, taskId: string, now = Date.now()): TaskCompletionResult {
+  const originalTask = state.tasks.find((task) => task.id === taskId);
+  if (!originalTask) throw new Error(`Task not found: ${taskId}`);
+  if (originalTask.completed) return { state, originalTask, completedTask: originalTask };
+  const completedTask: Task = { ...originalTask, completed: true, inProgress: false, completedAt: now, updatedAt: now };
+  const generatedTask = createNextOccurrence(state, originalTask, now);
+  const tasks = state.tasks.map((task) => task.id === taskId ? completedTask : task);
+  return {
+    state: { ...state, tasks: generatedTask ? [generatedTask, ...tasks] : tasks },
+    originalTask,
+    completedTask,
+    generatedTask,
+  };
+}
+
+export function undoTaskCompletion(state: FocoState, result: TaskCompletionResult): FocoState {
+  return {
+    ...state,
+    tasks: state.tasks
+      .filter((task) => task.id !== result.generatedTask?.id)
+      .map((task) => task.id === result.originalTask.id ? result.originalTask : task),
+  };
+}
+
+export function reopenTask(state: FocoState, taskId: string, now = Date.now()): FocoState {
+  return updateTaskV2(state, taskId, { completed: false, completedAt: undefined }, now);
+}
+
+export function duplicateTask(state: FocoState, taskId: string, now = Date.now()): FocoState {
+  const source = state.tasks.find((task) => task.id === taskId);
+  if (!source) return state;
+  const id = makeId('task', now, state.tasks.length + 1);
+  const duplicate: Task = {
+    ...source,
+    id,
+    completed: false,
+    completedAt: undefined,
+    inProgress: false,
+    notificationId: undefined,
+    subtasks: source.subtasks.map((subtask, index) => ({ ...subtask, id: makeId(`${id}-subtask`, now, index + 1), completed: false, completedAt: undefined, createdAt: now })),
+    createdAt: now,
+    updatedAt: now,
+    sortOrder: state.tasks.length,
+  };
+  return { ...state, tasks: [duplicate, ...state.tasks] };
+}
+
+export function postponeTask(state: FocoState, taskId: string, days = 1, now = Date.now()): FocoState {
+  const delta = Math.max(1, Math.round(days)) * DAY_MS;
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task) return state;
+  const dueAt = (task.dueAt ?? now) + delta;
+  const reminderAt = task.reminderAt === undefined ? undefined : task.reminderAt + delta;
+  return updateTaskV2(state, taskId, { dueAt, reminderAt, completed: false, completedAt: undefined }, now);
+}
+
+export function addSubtask(state: FocoState, taskId: string, title: string, now = Date.now()): FocoState {
+  const normalized = title.trim();
+  if (!normalized) return state;
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task) return state;
+  const subtask: Subtask = { id: makeId(`${taskId}-subtask`, now, task.subtasks.length + 1), title: normalized, completed: false, createdAt: now };
+  return updateTaskV2(state, taskId, { subtasks: [...task.subtasks, subtask] }, now);
+}
+
+export function toggleSubtask(state: FocoState, taskId: string, subtaskId: string, now = Date.now()): FocoState {
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task) return state;
+  const subtasks = task.subtasks.map((subtask) => subtask.id === subtaskId ? { ...subtask, completed: !subtask.completed, completedAt: subtask.completed ? undefined : now } : subtask);
+  return updateTaskV2(state, taskId, { subtasks }, now);
+}
+
+export function deleteSubtask(state: FocoState, taskId: string, subtaskId: string, now = Date.now()): FocoState {
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task) return state;
+  return updateTaskV2(state, taskId, { subtasks: task.subtasks.filter((subtask) => subtask.id !== subtaskId) }, now);
 }
 
 export function deleteTask(state: FocoState, taskId: string): FocoState {
@@ -182,50 +382,90 @@ export function addProject(state: FocoState, name: string, icon: ProjectIcon = '
   const normalized = name.trim();
   if (!normalized || state.projects.some((project) => project.name.toLowerCase() === normalized.toLowerCase())) return state;
   const project: Project = {
-    id: id('project', `${now.toString(36)}-${normalized.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`),
+    id: makeId('project', now, state.projects.length + 1),
     name: normalized,
     icon,
     archived: false,
+    description: '',
+    sortOrder: state.projects.length,
     createdAt: now,
+    updatedAt: now,
   };
   return { ...state, projects: [project, ...state.projects] };
 }
 
-export function toggleProjectArchived(state: FocoState, projectId: string): FocoState {
+export function updateProject(state: FocoState, projectId: string, patch: Partial<Pick<Project, 'name' | 'icon' | 'description' | 'archived' | 'sortOrder'>>, now = Date.now()): FocoState {
   return {
     ...state,
-    projects: state.projects.map((project) => project.id === projectId ? { ...project, archived: !project.archived } : project),
+    projects: state.projects.map((project) => project.id === projectId ? {
+      ...project,
+      ...patch,
+      name: patch.name === undefined ? project.name : patch.name.trim() || project.name,
+      description: patch.description === undefined ? project.description : patch.description.trim(),
+      updatedAt: now,
+    } : project),
   };
 }
 
-export function addSession(state: FocoState, session: Omit<FocusSession, 'id'>, now = Date.now()): FocoState {
-  if (!Number.isFinite(session.durationSec) || session.durationSec < 60) return state;
+export function toggleProjectArchived(state: FocoState, projectId: string): FocoState {
+  const project = state.projects.find((item) => item.id === projectId);
+  return project ? updateProject(state, projectId, { archived: !project.archived }) : state;
+}
+
+export function updateFocusPreferences(state: FocoState, patch: Partial<FocusPreferences>): FocoState {
+  return {
+    ...state,
+    preferences: {
+      ...state.preferences,
+      ...patch,
+      focusMinutes: Math.max(1, Math.round(patch.focusMinutes ?? state.preferences.focusMinutes)),
+      shortBreakMinutes: Math.max(1, Math.round(patch.shortBreakMinutes ?? state.preferences.shortBreakMinutes)),
+      longBreakMinutes: Math.max(1, Math.round(patch.longBreakMinutes ?? state.preferences.longBreakMinutes)),
+      longBreakEvery: Math.max(1, Math.round(patch.longBreakEvery ?? state.preferences.longBreakEvery)),
+      targetCycles: Math.max(1, Math.round(patch.targetCycles ?? state.preferences.targetCycles)),
+      notifyBeforeEndMinutes: Math.max(0, Math.round(patch.notifyBeforeEndMinutes ?? state.preferences.notifyBeforeEndMinutes)),
+    },
+  };
+}
+
+export function addSession(state: FocoState, session: SessionDraft, now = Date.now()): FocoState {
+  if (!Number.isFinite(session.durationSec) || session.durationSec < 1) return state;
   const normalized: FocusSession = {
     ...session,
-    durationSec: Math.round(session.durationSec),
-    id: id('session', `${now.toString(36)}-${state.sessions.length + 1}`),
+    id: makeId('session', now, state.sessions.length + 1),
+    phase: session.phase ?? 'focus',
+    plannedSec: Math.max(1, Math.round(session.plannedSec ?? session.durationSec)),
+    durationSec: Math.max(1, Math.round(session.durationSec)),
+    completed: session.completed ?? true,
+    interrupted: session.interrupted ?? false,
+    cycleNumber: Math.max(1, Math.round(session.cycleNumber ?? 1)),
   };
   return { ...state, sessions: [normalized, ...state.sessions] };
 }
 
 export function getTodaySummary(state: FocoState, now = Date.now()): TodaySummary {
-  const dayStart = startOfDay(now);
+  const dayStart = startOfLocalDay(now);
+  const dayEnd = endOfLocalDay(now);
+  const openToday = state.tasks.filter((task) => !task.completed && task.dueAt !== undefined && task.dueAt >= dayStart && task.dueAt < dayEnd);
   return {
-    pending: state.tasks.filter((task) => !task.completed && !task.inProgress).length,
+    pending: openToday.filter((task) => !task.inProgress).length,
     active: state.tasks.filter((task) => !task.completed && task.inProgress).length,
-    completed: state.tasks.filter((task) => task.completedAt !== undefined && task.completedAt >= dayStart).length,
-    focusSeconds: state.sessions.filter((session) => session.endedAt >= dayStart && session.endedAt <= now).reduce((sum, session) => sum + session.durationSec, 0),
+    completed: state.tasks.filter((task) => task.completedAt !== undefined && task.completedAt >= dayStart && task.completedAt < dayEnd).length,
+    focusSeconds: state.sessions.filter((session) => session.phase === 'focus' && session.endedAt >= dayStart && session.endedAt < dayEnd).reduce((sum, session) => sum + session.durationSec, 0),
   };
 }
 
 export function getProjectMetrics(state: FocoState, projectId: string): ProjectMetrics {
   const tasks = state.tasks.filter((task) => task.projectId === projectId);
+  const sessions = state.sessions.filter((session) => session.projectId === projectId && session.phase === 'focus');
   const completedCount = tasks.filter((task) => task.completed).length;
   return {
     taskCount: tasks.length,
     completedCount,
     progress: tasks.length === 0 ? 0 : completedCount / tasks.length,
-    focusSeconds: state.sessions.filter((session) => session.projectId === projectId).reduce((sum, session) => sum + session.durationSec, 0),
+    focusSeconds: sessions.reduce((sum, session) => sum + session.durationSec, 0),
+    completedPomodoros: sessions.filter((session) => session.mode === 'pomodoro' && session.completed).length,
+    plannedPomodoros: tasks.filter((task) => !task.completed).reduce((sum, task) => sum + task.estimatedPomodoros, 0),
   };
 }
 
@@ -240,14 +480,13 @@ export function getWeekBounds(offset = 0, now = Date.now()) {
 export function getWeekStats(state: FocoState, offset = 0, now = Date.now()) {
   const { start, end } = getWeekBounds(offset, now);
   const daySeconds = Array.from({ length: 7 }, () => 0);
-  const sessions = state.sessions.filter((session) => session.endedAt >= start && session.endedAt < end);
+  const sessions = state.sessions.filter((session) => session.phase === 'focus' && session.endedAt >= start && session.endedAt < end);
   for (const session of sessions) {
-    const index = Math.min(6, Math.max(0, Math.floor((startOfDay(session.endedAt) - start) / DAY_MS)));
+    const index = Math.min(6, Math.max(0, Math.floor((startOfLocalDay(session.endedAt) - start) / DAY_MS)));
     daySeconds[index] = (daySeconds[index] ?? 0) + session.durationSec;
   }
   const completedTasks = state.tasks.filter((task) => task.completedAt !== undefined && task.completedAt >= start && task.completedAt < end).length;
-  const totalSeconds = daySeconds.reduce((sum, value) => sum + value, 0);
-  return { start, end, daySeconds, totalSeconds, completedTasks, sessions };
+  return { start, end, daySeconds, totalSeconds: daySeconds.reduce((sum, value) => sum + value, 0), completedTasks, sessions };
 }
 
 export function formatDuration(seconds: number, compact = false) {
@@ -256,4 +495,26 @@ export function formatDuration(seconds: number, compact = false) {
   const minutes = Math.floor((safe % 3600) / 60);
   if (compact) return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+// Compatibility helpers retained while screens migrate to the richer API.
+export function normalizeState(value: unknown, now = Date.now()): FocoState {
+  if (!value || typeof value !== 'object') return createInitialState(now);
+  const candidate = value as Partial<FocoState>;
+  if (candidate.version !== 2 || !Array.isArray(candidate.projects) || !Array.isArray(candidate.tasks) || !Array.isArray(candidate.sessions)) return createInitialState(now);
+  return { ...candidate, version: 2, preferences: { ...defaultFocusPreferences, ...(candidate.preferences ?? {}) } } as FocoState;
+}
+
+export function addTask(state: FocoState, title: string, projectId = 'personal', priority: TaskPriority = 'Media', now = Date.now()) {
+  return createTask(state, { title, projectId, priority, dueAt: now }, now);
+}
+
+export function updateTask(state: FocoState, taskId: string, patch: Partial<Pick<Task, 'title' | 'projectId' | 'priority' | 'inProgress' | 'favorite'>>) {
+  return updateTaskV2(state, taskId, patch);
+}
+
+export function toggleTask(state: FocoState, taskId: string, now = Date.now()) {
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task) return state;
+  return task.completed ? reopenTask(state, taskId, now) : completeTask(state, taskId, now).state;
 }
