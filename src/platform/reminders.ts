@@ -10,31 +10,16 @@ const TIMER_CHANNEL = 'foco-timer';
 export async function configureLocalNotifications() {
   try {
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
+      handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
     });
     if (Platform.OS === 'android') {
       await Promise.all([
-        Notifications.setNotificationChannelAsync(TASK_CHANNEL, {
-          name: 'Recordatorios de tareas',
-          importance: Notifications.AndroidImportance.HIGH,
-          vibrationPattern: [0, 180, 100, 180],
-          lightColor: '#F7F7F8',
-        }),
-        Notifications.setNotificationChannelAsync(TIMER_CHANNEL, {
-          name: 'Temporizador de enfoque',
-          importance: Notifications.AndroidImportance.HIGH,
-          vibrationPattern: [0, 250, 100, 250],
-          lightColor: '#F7F7F8',
-        }),
+        Notifications.setNotificationChannelAsync(TASK_CHANNEL, { name: 'Recordatorios de tareas', importance: Notifications.AndroidImportance.HIGH, vibrationPattern: [0, 180, 100, 180], lightColor: '#F7F7F8' }),
+        Notifications.setNotificationChannelAsync(TIMER_CHANNEL, { name: 'Temporizador de enfoque', importance: Notifications.AndroidImportance.HIGH, vibrationPattern: [0, 250, 100, 250], lightColor: '#F7F7F8' }),
       ]);
     }
   } catch {
-    // Notifications are enhancement-only; FOCO remains fully usable offline.
+    // Notifications enhance FOCO but never block local planning.
   }
 }
 
@@ -51,11 +36,7 @@ export async function ensureNotificationPermission() {
 
 export async function cancelScheduledNotification(identifier?: string) {
   if (!identifier) return;
-  try {
-    await Notifications.cancelScheduledNotificationAsync(identifier);
-  } catch {
-    // A missing/expired identifier requires no user-facing failure.
-  }
+  try { await Notifications.cancelScheduledNotificationAsync(identifier); } catch { /* expired identifier */ }
 }
 
 async function cancelTaskReminders(taskId: string) {
@@ -64,7 +45,7 @@ async function cancelTaskReminders(taskId: string) {
     const matches = scheduled.filter((item) => item.content.data?.type === 'task' && item.content.data?.taskId === taskId);
     await Promise.all(matches.map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)));
   } catch {
-    // Reconciliation can safely retry on the next edit.
+    // Reconciliation retries on the next mutation.
   }
 }
 
@@ -73,12 +54,7 @@ export async function scheduleTaskReminder(task: Task) {
   if (!request || !(await ensureNotificationPermission())) return undefined;
   try {
     return await Notifications.scheduleNotificationAsync({
-      content: {
-        title: request.title,
-        body: request.body,
-        data: { type: 'task', taskId: request.taskId },
-        sound: true,
-      },
+      content: { title: request.title, body: request.body, data: { type: 'task', taskId: request.taskId }, sound: true },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(request.date), channelId: TASK_CHANNEL },
     });
   } catch {
@@ -87,17 +63,17 @@ export async function scheduleTaskReminder(task: Task) {
 }
 
 export async function syncTaskReminder(previous: Task | undefined, next: Task | undefined) {
-  const taskId = next?.id ?? previous?.id;
-  if (taskId) await cancelTaskReminders(taskId);
+  const ids = new Set([previous?.id, next?.id].filter((value): value is string => Boolean(value)));
+  await Promise.all([...ids].map(cancelTaskReminders));
   if (!next || next.completed || next.reminderAt === undefined) return undefined;
   return scheduleTaskReminder(next);
 }
 
-export async function scheduleFocusPhaseNotification(seconds: number, title: string, body: string, data: Record<string, unknown> = {}) {
+export async function scheduleFocusPhaseNotification(seconds: number, title: string, body: string, data: Record<string, unknown> = {}, sound = true) {
   if (seconds < 1 || !(await ensureNotificationPermission())) return undefined;
   try {
     return await Notifications.scheduleNotificationAsync({
-      content: { title, body, data: { type: 'timer', ...data }, sound: true },
+      content: { title, body, data: { type: 'timer', ...data }, sound },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: Math.max(1, Math.round(seconds)), channelId: TIMER_CHANNEL },
     });
   } catch {

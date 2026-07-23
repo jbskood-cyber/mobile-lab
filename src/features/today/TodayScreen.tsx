@@ -2,15 +2,17 @@ import { useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { getAgendaBuckets, getNextAction } from '@/src/core/agenda';
+import { buildDayPlan, getMomentumTask, getReplanQueue } from '@/src/core/dayPlan';
 import { useFocoStore } from '@/src/core/FocoStore';
 import { formatDuration, startOfLocalDay, type Task } from '@/src/core/model';
+import { InboxSheet } from '@/src/features/inbox/InboxSheet';
+import { ReplanSheet } from '@/src/features/replan/ReplanSheet';
 import { TaskEditorSheet } from '@/src/features/tasks/TaskEditorSheet';
 import { TaskRow } from '@/src/features/tasks/TaskRow';
 import { FocoIcon } from '@/src/ui/FocoIcon';
 import { FocoScreen, SectionTitle } from '@/src/ui/FocoShell';
+import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 import { useFocoUI } from '@/src/ui/FocoUIContext';
-import { foco } from '@/src/ui/focoTheme';
 import { hapticImpact, hapticSuccess, pressedStyle } from '@/src/ui/premium';
 
 function todayLabel() {
@@ -19,15 +21,19 @@ function todayLabel() {
 
 export function TodayScreen() {
   const router = useRouter();
+  const theme = useFocoTheme();
   const inputRef = useRef<TextInput>(null);
   const { state, createTask, completeTask, reopenTask, deleteTask, storageError } = useFocoStore();
   const { showUndo } = useFocoUI();
   const [draft, setDraft] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
-  const buckets = useMemo(() => getAgendaBuckets(state), [state]);
-  const nextAction = useMemo(() => getNextAction(state), [state]);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [replanOpen, setReplanOpen] = useState(false);
+  const plan = useMemo(() => buildDayPlan(state), [state]);
+  const replan = useMemo(() => getReplanQueue(state), [state]);
+  const momentum = useMemo(() => getMomentumTask(state), [state]);
   const projectMap = useMemo(() => new Map(state.projects.map((project) => [project.id, project.name])), [state.projects]);
-  const completedToday = useMemo(() => buckets.completed.filter((task) => task.completedAt !== undefined && task.completedAt >= startOfLocalDay(Date.now())), [buckets.completed]);
+  const completedToday = useMemo(() => state.tasks.filter((task) => task.completedAt !== undefined && task.completedAt >= startOfLocalDay(Date.now())), [state.tasks]);
   const focusToday = useMemo(() => state.sessions.filter((session) => session.phase === 'focus' && session.endedAt >= startOfLocalDay(Date.now())).reduce((sum, session) => sum + session.durationSec, 0), [state.sessions]);
   const taskPomodoros = useMemo(() => {
     const values = new Map<string, number>();
@@ -36,13 +42,9 @@ export function TodayScreen() {
   }, [state.sessions]);
 
   const openTask = (task: Task) => router.push({ pathname: '/task/[id]', params: { id: task.id } });
-  const startFocus = (task?: Task) => {
-    hapticImpact();
-    router.push({ pathname: '/(tabs)/focus', params: task ? { taskId: task.id } : {} });
-  };
   const submitQuick = () => {
     if (!draft.trim()) return;
-    const task = createTask({ title: draft, projectId: 'personal', dueAt: Date.now() });
+    const task = createTask({ title: draft, projectId: 'ideas', captured: true, durationMinutes: state.planning.defaultTaskDurationMinutes });
     if (!task) return;
     setDraft('');
     hapticSuccess();
@@ -55,46 +57,84 @@ export function TodayScreen() {
     showUndo(`${task.title} completada`, () => { reopenTask(task.id); if (result.generatedTask) deleteTask(result.generatedTask.id); });
   };
   const renderRows = (tasks: Task[]) => tasks.map((task) => <TaskRow key={task.id} task={task} projectName={projectMap.get(task.projectId) ?? 'Sin proyecto'} completedPomodoros={taskPomodoros.get(task.id) ?? 0} onPress={() => openTask(task)} onToggle={() => toggle(task)} />);
+  const loadRatio = plan.capacityMinutes === 0 ? 0 : Math.min(1, (plan.scheduledMinutes + plan.flexibleMinutes) / plan.capacityMinutes);
 
   return (
     <>
       <FocoScreen title="Hoy" subtitle={todayLabel()} screenKey="index" rightIcon="plus" rightAccessibilityLabel="Crear tarea" onRightPress={() => setEditorOpen(true)}>
-        {storageError ? <View style={styles.warning}><Text style={styles.warningText}>{storageError}</Text></View> : null}
-        <View style={styles.summary}><Summary value={String(buckets.today.length + buckets.overdue.length)} label="Por hacer" /><Summary value={String(completedToday.length)} label="Completadas" /><Summary value={formatDuration(focusToday, true)} label="Enfoque" /></View>
-        <View style={styles.quickAdd}><Pressable accessibilityRole="button" accessibilityLabel="Escribir tarea" onPress={() => inputRef.current?.focus()} style={({ pressed }) => [styles.quickIcon, pressed && pressedStyle]}><FocoIcon name="plus" size={22} color={foco.colors.muted} /></Pressable><TextInput ref={inputRef} value={draft} onChangeText={setDraft} onSubmitEditing={submitQuick} placeholder="Añadir para hoy" placeholderTextColor={foco.colors.subtle} returnKeyType="done" autoCapitalize="sentences" style={styles.quickInput} /><Pressable accessibilityRole="button" accessibilityLabel="Guardar tarea" disabled={!draft.trim()} onPress={submitQuick} style={({ pressed }) => [styles.quickSave, !draft.trim() && styles.disabled, pressed && pressedStyle]}><FocoIcon name="check" size={18} color={foco.colors.bg} /></Pressable></View>
-        <SectionTitle title="Ahora" detail={nextAction ? projectMap.get(nextAction.projectId) : undefined} />
-        {nextAction ? <Pressable accessibilityRole="button" accessibilityLabel={`Enfocarse en ${nextAction.title}`} onPress={() => startFocus(nextAction)} style={({ pressed }) => [styles.nextAction, pressed && pressedStyle]}><View style={styles.nextCopy}><Text style={styles.nextTitle} numberOfLines={2}>{nextAction.title}</Text><Text style={styles.nextMeta}>{nextAction.estimatedPomodoros} {nextAction.estimatedPomodoros === 1 ? 'bloque estimado' : 'bloques estimados'}</Text></View><View style={styles.focusButton}><FocoIcon name="play" size={22} color={foco.colors.bg} /></View></Pressable> : <Empty title="Tu día está despejado" copy="Añade una tarea o elige algo desde Agenda." />}
-        {buckets.overdue.length > 0 ? <><SectionTitle title="Atrasadas" detail={String(buckets.overdue.length)} />{renderRows(buckets.overdue)}</> : null}
-        <SectionTitle title="Hoy" detail={String(buckets.today.length)} />
-        {buckets.today.length > 0 ? renderRows(buckets.today) : <Empty title="Sin tareas programadas" copy="Planifica algo para hoy desde el botón +." />}
+        {storageError ? <View style={[styles.warning, { backgroundColor: theme.colors.accentSoft }]}><Text style={[styles.warningText, { color: theme.colors.danger }]}>{storageError}</Text></View> : null}
+
+        <View style={[styles.capture, { backgroundColor: theme.colors.panel, borderColor: theme.colors.border }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Abrir Inbox" onPress={() => setInboxOpen(true)} style={({ pressed }) => [styles.captureIcon, pressed && pressedStyle]}><FocoIcon name="inbox" size={19} color={theme.colors.muted} /></Pressable>
+          <TextInput ref={inputRef} value={draft} onChangeText={setDraft} onSubmitEditing={submitQuick} placeholder="Captura algo para después" placeholderTextColor={theme.colors.subtle} returnKeyType="done" autoCapitalize="sentences" style={[styles.captureInput, { color: theme.colors.text }]} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Guardar en Inbox" disabled={!draft.trim()} onPress={submitQuick} style={({ pressed }) => [styles.captureSave, { backgroundColor: theme.colors.inverse }, !draft.trim() && styles.disabled, pressed && pressedStyle]}><FocoIcon name="plus" size={18} color={theme.colors.inverseText} /></Pressable>
+        </View>
+
+        <View style={[styles.capacity, { borderBottomColor: theme.colors.borderSoft }]}>
+          <View style={styles.capacityCopy}>
+            <Text style={[styles.capacityTitle, { color: plan.overloadMinutes > 0 ? theme.colors.danger : theme.colors.text }]}>{plan.overloadMinutes > 0 ? `${plan.overloadMinutes} min de exceso` : `${plan.freeMinutes} min libres`}</Text>
+            <Text style={[styles.capacityMeta, { color: theme.colors.muted }]}>{plan.scheduled.length} fijas · {plan.flexible.length} flexibles · {formatDuration(focusToday, true)} enfocado</Text>
+          </View>
+          <View style={[styles.track, { backgroundColor: theme.colors.panelStrong }]}><View style={[styles.fill, { width: `${Math.round(loadRatio * 100)}%`, backgroundColor: plan.overloadMinutes > 0 ? theme.colors.danger : theme.colors.accent }]} /></View>
+        </View>
+
+        {replan.length > 0 ? (
+          <Pressable accessibilityRole="button" onPress={() => setReplanOpen(true)} style={({ pressed }) => [styles.replan, { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent }, pressed && pressedStyle]}>
+            <View><Text style={[styles.replanTitle, { color: theme.colors.text }]}>{replan.length} pendientes por recuperar</Text><Text style={[styles.replanCopy, { color: theme.colors.muted }]}>Decide qué pasa con ellas sin perderlas.</Text></View>
+            <FocoIcon name="chevron-right" size={17} color={theme.colors.accent} />
+          </Pressable>
+        ) : null}
+
+        <SectionTitle title="Ahora" detail={momentum ? projectMap.get(momentum.projectId) : undefined} action={momentum ? <Pressable accessibilityLabel="Abrir modo Impulso" onPress={() => router.push('/momentum')} style={({ pressed }) => [styles.impulseLink, pressed && pressedStyle]}><Text style={[styles.impulseText, { color: theme.colors.accent }]}>Impulso</Text></Pressable> : undefined} />
+        {momentum ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={`Enfocarse en ${momentum.title}`} onPress={() => { hapticImpact(); router.push({ pathname: '/(tabs)/focus', params: { taskId: momentum.id } }); }} style={({ pressed }) => [styles.nextAction, { backgroundColor: theme.colors.panel, borderColor: theme.colors.border }, pressed && pressedStyle]}>
+            <View style={styles.nextCopy}><Text style={[styles.nextTitle, { color: theme.colors.text }]} numberOfLines={2}>{momentum.title}</Text><Text style={[styles.nextMeta, { color: theme.colors.muted }]}>{momentum.firstStep || `${momentum.durationMinutes} min · ${momentum.estimatedPomodoros} foco`}</Text></View>
+            <View style={[styles.focusButton, { backgroundColor: theme.colors.inverse }]}><FocoIcon name="play" size={20} color={theme.colors.inverseText} /></View>
+          </Pressable>
+        ) : <Empty title="Tu día está despejado" copy="Captura una idea o planifica algo desde Agenda." />}
+
+        <SectionTitle title="Planificado" detail={String(plan.scheduled.length)} />
+        {plan.scheduled.length > 0 ? renderRows(plan.scheduled) : <Empty title="Sin bloques fijos" copy="Agenda una hora concreta para verla aquí." />}
+        {plan.flexible.length > 0 ? <><SectionTitle title="Flexible" detail={String(plan.flexible.length)} />{renderRows(plan.flexible)}</> : null}
         {completedToday.length > 0 ? <><SectionTitle title="Completadas" detail={String(completedToday.length)} />{renderRows(completedToday)}</> : null}
       </FocoScreen>
-      <TaskEditorSheet visible={editorOpen} defaultDueAt={Date.now()} onClose={() => setEditorOpen(false)} />
+      <TaskEditorSheet visible={editorOpen} defaultDueAt={Date.now() + state.planning.defaultTaskDurationMinutes * 60_000} defaultPlannedStartAt={Date.now()} onClose={() => setEditorOpen(false)} />
+      <InboxSheet visible={inboxOpen} onClose={() => setInboxOpen(false)} onOpenTask={(task) => { setInboxOpen(false); openTask(task); }} />
+      <ReplanSheet visible={replanOpen} onClose={() => setReplanOpen(false)} onOpenTask={(task) => { setReplanOpen(false); openTask(task); }} />
     </>
   );
 }
 
-function Summary({ value, label }: { value: string; label: string }) { return <View style={styles.summaryItem}><Text style={styles.summaryValue}>{value}</Text><Text style={styles.summaryLabel}>{label}</Text></View>; }
-function Empty({ title, copy }: { title: string; copy: string }) { return <View style={styles.empty}><Text style={styles.emptyTitle}>{title}</Text><Text style={styles.emptyCopy}>{copy}</Text></View>; }
+function Empty({ title, copy }: { title: string; copy: string }) {
+  const theme = useFocoTheme();
+  return <View style={[styles.empty, { borderBottomColor: theme.colors.borderSoft }]}><Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{title}</Text><Text style={[styles.emptyCopy, { color: theme.colors.muted }]}>{copy}</Text></View>;
+}
 
 const styles = StyleSheet.create({
-  warning: { marginTop: 12, borderRadius: 12, backgroundColor: '#211719', padding: 11 },
-  warningText: { color: '#E4B8BE', fontSize: 12.5, lineHeight: 18 },
-  summary: { flexDirection: 'row', paddingVertical: 18, marginTop: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: foco.colors.borderSoft },
-  summaryItem: { flex: 1 },
-  summaryValue: { color: foco.colors.text, fontSize: 20, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  summaryLabel: { color: foco.colors.muted, fontSize: 11.5, marginTop: 4 },
-  quickAdd: { minHeight: 56, marginTop: 12, flexDirection: 'row', alignItems: 'center', borderRadius: 15, backgroundColor: foco.colors.panel, borderWidth: 1, borderColor: foco.colors.border },
-  quickIcon: { width: 46, height: 54, alignItems: 'center', justifyContent: 'center' },
-  quickInput: { flex: 1, color: foco.colors.text, fontSize: 15.5, paddingVertical: 13 },
-  quickSave: { width: 38, height: 38, marginRight: 8, borderRadius: 19, backgroundColor: foco.colors.text, alignItems: 'center', justifyContent: 'center' },
-  disabled: { opacity: 0.25 },
-  nextAction: { minHeight: 88, borderRadius: 16, backgroundColor: foco.colors.panel, borderWidth: 1, borderColor: foco.colors.border, paddingLeft: 16, paddingRight: 10, flexDirection: 'row', alignItems: 'center' },
-  nextCopy: { flex: 1, paddingRight: 12 },
-  nextTitle: { color: foco.colors.text, fontSize: 18, lineHeight: 23, fontWeight: '600' },
-  nextMeta: { color: foco.colors.muted, fontSize: 12.5, marginTop: 5 },
-  focusButton: { width: 50, height: 50, borderRadius: 25, backgroundColor: foco.colors.text, alignItems: 'center', justifyContent: 'center' },
-  empty: { minHeight: 92, alignItems: 'center', justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: foco.colors.borderSoft, paddingHorizontal: 18 },
-  emptyTitle: { color: foco.colors.text, fontSize: 15.5, fontWeight: '600' },
-  emptyCopy: { color: foco.colors.muted, fontSize: 12.5, textAlign: 'center', marginTop: 5 },
+  warning: { marginTop: 8, borderRadius: 10, padding: 9 },
+  warningText: { fontFamily: 'Manrope_500Medium', fontSize: 10.5, lineHeight: 14 },
+  capture: { minHeight: 48, marginTop: 9, flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth },
+  captureIcon: { width: 42, height: 46, alignItems: 'center', justifyContent: 'center' },
+  captureInput: { flex: 1, fontFamily: 'Manrope_400Regular', fontSize: 13.5, lineHeight: 18, paddingVertical: 10 },
+  captureSave: { width: 36, height: 36, marginRight: 5, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  disabled: { opacity: 0.28 },
+  capacity: { minHeight: 65, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  capacityCopy: { flex: 1 },
+  capacityTitle: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, lineHeight: 18 },
+  capacityMeta: { fontFamily: 'Manrope_400Regular', fontSize: 10, lineHeight: 14, marginTop: 2 },
+  track: { width: 72, height: 5, borderRadius: 3, overflow: 'hidden' },
+  fill: { height: 5, borderRadius: 3 },
+  replan: { minHeight: 58, marginTop: 9, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  replanTitle: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, lineHeight: 16 },
+  replanCopy: { fontFamily: 'Manrope_400Regular', fontSize: 9.5, lineHeight: 13, marginTop: 2 },
+  impulseLink: { minHeight: 36, justifyContent: 'center', paddingHorizontal: 4 },
+  impulseText: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, lineHeight: 14 },
+  nextAction: { minHeight: 72, borderRadius: 13, borderWidth: StyleSheet.hairlineWidth, paddingLeft: 13, paddingRight: 8, flexDirection: 'row', alignItems: 'center' },
+  nextCopy: { flex: 1, paddingRight: 10 },
+  nextTitle: { fontFamily: 'Manrope_600SemiBold', fontSize: 15.5, lineHeight: 20 },
+  nextMeta: { fontFamily: 'Manrope_400Regular', fontSize: 10.5, lineHeight: 14, marginTop: 3 },
+  focusButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  empty: { minHeight: 74, alignItems: 'center', justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 18 },
+  emptyTitle: { fontFamily: 'Manrope_600SemiBold', fontSize: 13.5, lineHeight: 18 },
+  emptyCopy: { fontFamily: 'Manrope_400Regular', fontSize: 10.5, lineHeight: 14, textAlign: 'center', marginTop: 3 },
 });

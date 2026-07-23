@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { useFocoStore } from '@/src/core/FocoStore';
@@ -10,8 +10,8 @@ import { FocoIcon, type IconName } from '@/src/ui/FocoIcon';
 import { FocoScreen } from '@/src/ui/FocoShell';
 import { FieldLabel, FocoSheet, SheetButton } from '@/src/ui/FocoSheet';
 import { ProgressRing } from '@/src/ui/ProgressRing';
+import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 import { normalizeIntegerDraft, parseOptionalInteger } from '@/src/ui/formModel';
-import { foco, shadowGlow } from '@/src/ui/focoTheme';
 import { hapticSelection, pressedStyle } from '@/src/ui/premium';
 
 function clockLabel(seconds: number) {
@@ -21,6 +21,7 @@ function clockLabel(seconds: number) {
 
 export function FocusScreen() {
   const params = useLocalSearchParams<{ taskId?: string; projectId?: string }>();
+  const theme = useFocoTheme();
   const { state } = useFocoStore();
   const activeProjects = useMemo(() => state.projects.filter((project) => !project.archived), [state.projects]);
   const initialTask = params.taskId ? state.tasks.find((item) => item.id === params.taskId && !item.completed) : undefined;
@@ -46,13 +47,8 @@ export function FocusScreen() {
   const [sound, setSound] = useState(true);
 
   useEffect(() => {
-    if (initialTask) {
-      setProjectId(initialTask.projectId);
-      setTaskId(initialTask.id);
-    } else if (params.projectId && activeProjects.some((item) => item.id === params.projectId)) {
-      setProjectId(params.projectId);
-      setTaskId(undefined);
-    }
+    if (initialTask) { setProjectId(initialTask.projectId); setTaskId(initialTask.id); }
+    else if (params.projectId && activeProjects.some((item) => item.id === params.projectId)) { setProjectId(params.projectId); setTaskId(undefined); }
   }, [activeProjects, initialTask, params.projectId]);
 
   const openTasks = useMemo(() => state.tasks.filter((item) => item.projectId === projectId && !item.completed), [projectId, state.tasks]);
@@ -62,7 +58,6 @@ export function FocusScreen() {
   const pomodorosToday = todaySessions.filter((session) => session.mode === 'pomodoro' && session.completed).length;
   const taskSessions = task ? state.sessions.filter((session) => session.taskId === task.id && session.phase === 'focus') : [];
   const taskPomodoros = taskSessions.filter((session) => session.mode === 'pomodoro' && session.completed).length;
-
   const phaseLabel = timer.runtime.mode === 'stopwatch' ? 'Cronómetro' : timer.runtime.phase === 'longBreak' ? 'Descanso largo' : timer.runtime.phase === 'shortBreak' ? 'Descanso' : 'Enfoque';
 
   const openSettings = () => {
@@ -93,167 +88,106 @@ export function FocusScreen() {
 
   const saveSettings = () => {
     if (focusMinutes === null || shortBreakMinutes === null || longBreakMinutes === null || longEvery === null || targetCycles === null || notifyBeforeEndMinutes === null) return;
-    timer.configure({
-      focusSeconds: focusMinutes * 60,
-      shortBreakSeconds: shortBreakMinutes * 60,
-      longBreakSeconds: longBreakMinutes * 60,
-      longBreakEvery: longEvery,
-      targetCycles,
-      autoStartBreaks: autoBreaks,
-      autoStartFocus: autoFocus,
-      continuousMode: continuous,
-    }, {
-      focusMinutes,
-      shortBreakMinutes,
-      longBreakMinutes,
-      longBreakEvery: longEvery,
-      targetCycles,
-      autoStartBreaks: autoBreaks,
-      autoStartFocus: autoFocus,
-      continuousMode: continuous,
-      keepAwake,
-      vibrationEnabled: vibration,
-      soundEnabled: sound,
-      notifyBeforeEndMinutes,
-    });
+    timer.configure({ focusSeconds: focusMinutes * 60, shortBreakSeconds: shortBreakMinutes * 60, longBreakSeconds: longBreakMinutes * 60, longBreakEvery: longEvery, targetCycles, autoStartBreaks: autoBreaks, autoStartFocus: autoFocus, continuousMode: continuous }, { focusMinutes, shortBreakMinutes, longBreakMinutes, longBreakEvery: longEvery, targetCycles, autoStartBreaks: autoBreaks, autoStartFocus: autoFocus, continuousMode: continuous, keepAwake, vibrationEnabled: vibration, soundEnabled: sound, notifyBeforeEndMinutes });
     setSettingsOpen(false);
   };
 
-  const selectProject = (nextProjectId: string) => {
-    setProjectId(nextProjectId);
-    setTaskId(undefined);
-    timer.selectContext(nextProjectId, undefined);
-  };
-  const selectTask = (nextTask?: Task) => {
-    const nextProjectId = nextTask?.projectId ?? projectId;
-    setProjectId(nextProjectId);
-    setTaskId(nextTask?.id);
-    timer.selectContext(nextProjectId, nextTask?.id);
-    setContextOpen(false);
-  };
-
-  const totalTaskEstimate = task?.estimatedPomodoros ?? timer.preferences.targetCycles;
-  const taskProgress = task ? Math.min(1, taskPomodoros / Math.max(1, totalTaskEstimate)) : Math.min(1, pomodorosToday / Math.max(1, timer.preferences.targetCycles));
+  const selectProject = (nextProjectId: string) => { setProjectId(nextProjectId); setTaskId(undefined); timer.selectContext(nextProjectId, undefined); };
+  const selectTask = (nextTask?: Task) => { const nextProjectId = nextTask?.projectId ?? projectId; setProjectId(nextProjectId); setTaskId(nextTask?.id); timer.selectContext(nextProjectId, nextTask?.id); setContextOpen(false); };
+  const totalEstimate = task?.estimatedPomodoros ?? timer.preferences.targetCycles;
+  const progress = task ? Math.min(1, taskPomodoros / Math.max(1, totalEstimate)) : Math.min(1, pomodorosToday / Math.max(1, timer.preferences.targetCycles));
 
   return (
     <>
       <FocusKeepAwake active={timer.runtime.running && timer.preferences.keepAwake} />
       <FocoScreen title="Enfoque" subtitle={timer.runtime.running ? 'Sesión activa' : 'Elige una tarea y empieza.'} screenKey="focus" rightIcon="sliders" rightAccessibilityLabel="Configurar enfoque" onRightPress={openSettings}>
-        <View style={styles.modeSwitch}>
-          {([['pomodoro', 'Pomodoro'], ['stopwatch', 'Cronómetro']] as Array<[FocusMode, string]>).map(([mode, label]) => {
-            const selected = timer.runtime.mode === mode;
-            return <Pressable key={mode} accessibilityRole="radio" accessibilityState={{ checked: selected }} disabled={timer.runtime.running} onPress={() => timer.changeMode(mode)} style={({ pressed }) => [styles.mode, selected && styles.modeActive, timer.runtime.running && !selected && styles.modeDisabled, pressed && pressedStyle]}><Text style={[styles.modeText, selected && styles.modeTextActive]}>{label}</Text></Pressable>;
-          })}
-        </View>
+        <View style={[styles.modeSwitch, { backgroundColor: theme.colors.panelSoft, borderColor: theme.colors.borderSoft }]}>{([['pomodoro', 'Pomodoro'], ['stopwatch', 'Cronómetro']] as Array<[FocusMode, string]>).map(([mode, label]) => { const selected = timer.runtime.mode === mode; return <Pressable key={mode} accessibilityRole="radio" accessibilityState={{ checked: selected }} disabled={timer.runtime.running} onPress={() => timer.changeMode(mode)} style={({ pressed }) => [styles.mode, selected && { backgroundColor: theme.colors.inverse }, timer.runtime.running && !selected && styles.disabled, pressed && pressedStyle]}><Text style={[styles.modeText, { color: selected ? theme.colors.inverseText : theme.colors.muted }]}>{label}</Text></Pressable>; })}</View>
 
-        <Pressable accessibilityRole="button" accessibilityLabel="Elegir tarea o proyecto" disabled={timer.runtime.running} onPress={() => setContextOpen(true)} style={({ pressed }) => [styles.context, pressed && pressedStyle]}>
-          <View style={styles.contextIcon}><FocoIcon name={(task ? 'checklist' : project?.icon ?? 'folder') as IconName} size={22} color={foco.colors.text} /></View>
-          <View style={styles.contextCopy}><Text style={styles.contextTitle} numberOfLines={1}>{task?.title ?? project?.name ?? 'Sin proyecto'}</Text><Text style={styles.contextMeta}>{task ? `${project?.name} · ${taskPomodoros}/${task.estimatedPomodoros} pomodoros` : 'Sesión libre del proyecto'}</Text></View>
-          <FocoIcon name="chevron-down" size={17} color={foco.colors.muted} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Elegir tarea o proyecto" disabled={timer.runtime.running} onPress={() => setContextOpen(true)} style={({ pressed }) => [styles.context, { borderColor: theme.colors.borderSoft }, pressed && pressedStyle]}>
+          <View style={[styles.contextIcon, { backgroundColor: theme.colors.panelStrong }]}><FocoIcon name={(task ? 'checklist' : project?.icon ?? 'folder') as IconName} size={19} color={theme.colors.text} /></View>
+          <View style={styles.contextCopy}><Text style={[styles.contextTitle, { color: theme.colors.text }]} numberOfLines={1}>{task?.title ?? project?.name ?? 'Sin proyecto'}</Text><Text style={[styles.contextMeta, { color: theme.colors.muted }]}>{task ? `${project?.name} · ${taskPomodoros}/${task.estimatedPomodoros} foco · ${task.durationMinutes}m` : 'Sesión libre del proyecto'}</Text></View>
+          <FocoIcon name="chevron-down" size={16} color={theme.colors.muted} />
         </Pressable>
 
         <View style={styles.timerWrap}>
-          <ProgressRing size={264} strokeWidth={12} progress={timer.progress} color={foco.colors.white} trackColor="#292C32" glow>
-            <View style={styles.timerCopy} accessibilityLiveRegion="polite"><Text style={styles.phase}>{phaseLabel}</Text><Text style={styles.timer} maxFontSizeMultiplier={1.03}>{timer.ready ? clockLabel(timer.seconds) : '··:··'}</Text><Text style={styles.cycle}>{timer.runtime.mode === 'pomodoro' ? `Ciclo ${timer.runtime.currentCycle} de ${timer.runtime.targetCycles}` : 'Tiempo acumulado'}</Text></View>
+          <ProgressRing size={226} strokeWidth={9} progress={timer.progress} color={theme.colors.accent} trackColor={theme.colors.panelStrong}>
+            <View style={styles.timerCopy} accessibilityLiveRegion="polite"><Text style={[styles.phase, { color: theme.colors.muted }]}>{phaseLabel}</Text><Text style={[styles.timer, { color: theme.colors.text }]} maxFontSizeMultiplier={1.03}>{timer.ready ? clockLabel(timer.seconds) : '··:··'}</Text><Text style={[styles.cycle, { color: theme.colors.muted }]}>{timer.runtime.mode === 'pomodoro' ? `Ciclo ${timer.runtime.currentCycle} de ${timer.runtime.targetCycles}` : 'Tiempo acumulado'}</Text></View>
           </ProgressRing>
         </View>
 
         <View style={styles.controls}>
-          <Pressable accessibilityRole="button" accessibilityLabel={timer.runtime.mode === 'pomodoro' ? 'Saltar fase' : 'Reiniciar'} onPress={timer.skipPhase} style={({ pressed }) => [styles.secondary, pressed && pressedStyle]}><FocoIcon name="previous" size={25} color={foco.colors.text} /></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={timer.runtime.running ? 'Pausar' : 'Iniciar'} onPress={timer.toggle} style={({ pressed }) => [styles.primaryControl, timer.runtime.running && styles.primaryRunning, pressed && pressedStyle]}><FocoIcon name={timer.runtime.running ? 'pause' : 'play'} size={33} color={foco.colors.white} /></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Detener y guardar" onPress={timer.stop} style={({ pressed }) => [styles.secondary, pressed && pressedStyle]}><FocoIcon name="stop" size={24} color={foco.colors.text} /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={timer.runtime.mode === 'pomodoro' ? 'Saltar fase' : 'Reiniciar'} onPress={timer.skipPhase} style={({ pressed }) => [styles.secondary, { borderColor: theme.colors.border }, pressed && pressedStyle]}><FocoIcon name="previous" size={21} color={theme.colors.text} /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={timer.runtime.running ? 'Pausar' : 'Iniciar'} onPress={timer.toggle} style={({ pressed }) => [styles.primaryControl, { backgroundColor: theme.colors.inverse }, pressed && pressedStyle]}><FocoIcon name={timer.runtime.running ? 'pause' : 'play'} size={28} color={theme.colors.inverseText} /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Detener y guardar" onPress={timer.stop} style={({ pressed }) => [styles.secondary, { borderColor: theme.colors.border }, pressed && pressedStyle]}><FocoIcon name="stop" size={20} color={theme.colors.text} /></Pressable>
         </View>
 
-        {timer.message ? <View style={[styles.message, timer.message.tone === 'success' && styles.messageSuccess, timer.message.tone === 'warning' && styles.messageWarning]}><Text style={styles.messageText}>{timer.message.text}</Text></View> : null}
-        <View style={styles.sessionSummary}><Summary value={`${pomodorosToday}/${timer.preferences.targetCycles}`} label="Pomodoros hoy" /><Summary value={formatDuration(focusToday, true)} label="Tiempo hoy" /><Summary value={`${Math.round(taskProgress * 100)}%`} label={task ? 'Tarea' : 'Meta diaria'} /></View>
+        {timer.message ? <View style={[styles.message, { backgroundColor: theme.colors.panel, borderColor: timer.message.tone === 'warning' ? theme.colors.warning : timer.message.tone === 'success' ? theme.colors.success : theme.colors.border }]}><Text style={[styles.messageText, { color: theme.colors.text }]}>{timer.message.text}</Text></View> : null}
+        <View style={[styles.summary, { borderColor: theme.colors.borderSoft }]}><Summary value={`${pomodorosToday}/${timer.preferences.targetCycles}`} label="Pomodoros hoy" /><Summary value={formatDuration(focusToday, true)} label="Tiempo hoy" /><Summary value={`${Math.round(progress * 100)}%`} label={task ? 'Tarea' : 'Meta diaria'} /></View>
       </FocoScreen>
 
       <FocoSheet visible={contextOpen} title="Enfocarse en" subtitle="Vincula la sesión para medir progreso real." onClose={() => setContextOpen(false)}>
         <FieldLabel>PROYECTO</FieldLabel>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectChoices}>
-          {activeProjects.map((item) => <Pressable key={item.id} onPress={() => selectProject(item.id)} style={({ pressed }) => [styles.projectChoice, projectId === item.id && styles.projectChoiceActive, pressed && pressedStyle]}><Text style={[styles.projectChoiceText, projectId === item.id && styles.optionTextActive]}>{item.name}</Text></Pressable>)}
-        </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectChoices}>{activeProjects.map((item) => { const selected = projectId === item.id; return <Pressable key={item.id} onPress={() => selectProject(item.id)} style={({ pressed }) => [styles.projectChoice, { borderColor: selected ? theme.colors.inverse : theme.colors.border, backgroundColor: selected ? theme.colors.inverse : 'transparent' }, pressed && pressedStyle]}><Text style={[styles.projectChoiceText, { color: selected ? theme.colors.inverseText : theme.colors.muted }]}>{item.name}</Text></Pressable>; })}</ScrollView>
         <FieldLabel>TAREA</FieldLabel>
-        <Pressable onPress={() => selectTask(undefined)} style={({ pressed }) => [styles.contextOption, !task && styles.contextOptionActive, pressed && pressedStyle]}><FocoIcon name="folder" size={21} color={!task ? foco.colors.bg : foco.colors.text} /><View style={styles.optionCopy}><Text style={[styles.optionTitle, !task && styles.optionTextActive]}>{project?.name ?? 'Proyecto'}</Text><Text style={[styles.optionMeta, !task && styles.optionTextActive]}>Sesión libre</Text></View>{!task ? <FocoIcon name="check" size={18} color={foco.colors.bg} /> : null}</Pressable>
-        {openTasks.map((item) => <Pressable key={item.id} onPress={() => selectTask(item)} style={({ pressed }) => [styles.contextOption, task?.id === item.id && styles.contextOptionActive, pressed && pressedStyle]}><FocoIcon name="checklist" size={21} color={task?.id === item.id ? foco.colors.bg : foco.colors.text} /><View style={styles.optionCopy}><Text style={[styles.optionTitle, task?.id === item.id && styles.optionTextActive]} numberOfLines={1}>{item.title}</Text><Text style={[styles.optionMeta, task?.id === item.id && styles.optionTextActive]}>{item.estimatedPomodoros} pomodoros estimados</Text></View>{task?.id === item.id ? <FocoIcon name="check" size={18} color={foco.colors.bg} /> : null}</Pressable>)}
-        {openTasks.length === 0 ? <Text style={styles.empty}>No hay tareas pendientes en este proyecto.</Text> : null}
+        <ContextOption title={project?.name ?? 'Proyecto'} detail="Sesión libre" icon="folder" selected={!task} onPress={() => selectTask(undefined)} />
+        {openTasks.map((item) => <ContextOption key={item.id} title={item.title} detail={`${item.estimatedPomodoros} foco · ${item.durationMinutes} min`} icon="checklist" selected={task?.id === item.id} onPress={() => selectTask(item)} />)}
+        {openTasks.length === 0 ? <Text style={[styles.empty, { color: theme.colors.muted }]}>No hay tareas pendientes en este proyecto.</Text> : null}
       </FocoSheet>
 
       <FocoSheet visible={settingsOpen} title="Ritmo de enfoque" subtitle="Los cambios se aplican al reiniciar la fase actual." onClose={() => setSettingsOpen(false)} footer={<><SheetButton label="Reiniciar" variant="secondary" onPress={() => { timer.reset(); setSettingsOpen(false); }} /><SheetButton label="Aplicar" onPress={saveSettings} disabled={!settingsValid} /></>}>
-        <View style={styles.fieldGrid}>
-          <NumberField label="ENFOQUE" value={focusDraft} onChange={setFocusDraft} fallback={timer.preferences.focusMinutes} min={1} max={180} suffix="min" />
-          <NumberField label="DESCANSO" value={shortBreakDraft} onChange={setShortBreakDraft} fallback={timer.preferences.shortBreakMinutes} min={1} max={60} suffix="min" />
-          <NumberField label="DESCANSO LARGO" value={longBreakDraft} onChange={setLongBreakDraft} fallback={timer.preferences.longBreakMinutes} min={1} max={90} suffix="min" />
-          <NumberField label="CADA" value={longEveryDraft} onChange={setLongEveryDraft} fallback={timer.preferences.longBreakEvery} min={1} max={12} suffix="ciclos" />
-          <NumberField label="META" value={cyclesDraft} onChange={setCyclesDraft} fallback={timer.preferences.targetCycles} min={1} max={12} suffix="ciclos" />
-          <NumberField label="AVISO PREVIO" value={notifyDraft} onChange={setNotifyDraft} fallback={timer.preferences.notifyBeforeEndMinutes} min={0} max={30} suffix="min" />
-        </View>
-        <FieldLabel>AUTOMATIZACIÓN</FieldLabel>
-        <ToggleRow label="Iniciar descansos automáticamente" value={autoBreaks} onChange={setAutoBreaks} />
-        <ToggleRow label="Iniciar enfoque automáticamente" value={autoFocus} onChange={setAutoFocus} />
-        <ToggleRow label="Modo continuo" value={continuous} onChange={setContinuous} />
-        <ToggleRow label="Mantener pantalla activa" value={keepAwake} onChange={setKeepAwake} />
-        <ToggleRow label="Vibración" value={vibration} onChange={setVibration} />
-        <ToggleRow label="Sonido" value={sound} onChange={setSound} />
+        <View style={styles.fieldGrid}><NumberField label="ENFOQUE" value={focusDraft} onChange={setFocusDraft} fallback={timer.preferences.focusMinutes} min={1} max={180} /><NumberField label="DESCANSO" value={shortBreakDraft} onChange={setShortBreakDraft} fallback={timer.preferences.shortBreakMinutes} min={1} max={60} /><NumberField label="DESCANSO LARGO" value={longBreakDraft} onChange={setLongBreakDraft} fallback={timer.preferences.longBreakMinutes} min={1} max={90} /><NumberField label="CADA N CICLOS" value={longEveryDraft} onChange={setLongEveryDraft} fallback={timer.preferences.longBreakEvery} min={1} max={12} /><NumberField label="CICLOS" value={cyclesDraft} onChange={setCyclesDraft} fallback={timer.preferences.targetCycles} min={1} max={12} /><NumberField label="AVISO PREVIO" value={notifyDraft} onChange={setNotifyDraft} fallback={timer.preferences.notifyBeforeEndMinutes} min={0} max={30} /></View>
+        <Toggle label="Iniciar descansos automáticamente" value={autoBreaks} onChange={setAutoBreaks} />
+        <Toggle label="Iniciar enfoque automáticamente" value={autoFocus} onChange={setAutoFocus} />
+        <Toggle label="Modo continuo" value={continuous} onChange={setContinuous} />
+        <Toggle label="Mantener pantalla activa" value={keepAwake} onChange={setKeepAwake} />
+        <Toggle label="Vibración" value={vibration} onChange={setVibration} />
+        <Toggle label="Sonido" value={sound} onChange={setSound} last />
       </FocoSheet>
     </>
   );
 }
 
-function Summary({ value, label }: { value: string; label: string }) { return <View style={styles.summaryItem}><Text style={styles.summaryValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text><Text style={styles.summaryLabel}>{label}</Text></View>; }
-function NumberField({ label, value, onChange, fallback, min, max, suffix }: { label: string; value: string; onChange: (value: string) => void; fallback: number; min: number; max: number; suffix: string }) { return <View style={styles.numberField}><Text style={styles.numberLabel}>{label}</Text><View style={styles.numberInputRow}><TextInput value={value} onChangeText={onChange} onBlur={() => onChange(normalizeIntegerDraft(value, fallback, min, max))} inputMode="numeric" keyboardType="number-pad" selectTextOnFocus style={styles.numberInput} /><Text style={styles.numberSuffix}>{suffix}</Text></View></View>; }
-function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) { return <Pressable accessibilityRole="switch" accessibilityState={{ checked: value }} onPress={() => { onChange(!value); hapticSelection(); }} style={({ pressed }) => [styles.toggleRow, pressed && pressedStyle]}><Text style={styles.toggleLabel}>{label}</Text><View style={[styles.toggle, value && styles.toggleActive]}><View style={[styles.toggleKnob, value && styles.toggleKnobActive]} /></View></Pressable>; }
+function Summary({ value, label }: { value: string; label: string }) { const theme = useFocoTheme(); return <View style={styles.summaryItem}><Text style={[styles.summaryValue, { color: theme.colors.text }]}>{value}</Text><Text style={[styles.summaryLabel, { color: theme.colors.muted }]}>{label}</Text></View>; }
+function ContextOption({ title, detail, icon, selected, onPress }: { title: string; detail: string; icon: IconName; selected: boolean; onPress: () => void }) { const theme = useFocoTheme(); return <Pressable onPress={onPress} style={({ pressed }) => [styles.contextOption, { borderBottomColor: theme.colors.borderSoft, backgroundColor: selected ? theme.colors.inverse : 'transparent' }, pressed && pressedStyle]}><FocoIcon name={icon} size={18} color={selected ? theme.colors.inverseText : theme.colors.text} /><View style={styles.optionCopy}><Text style={[styles.optionTitle, { color: selected ? theme.colors.inverseText : theme.colors.text }]} numberOfLines={1}>{title}</Text><Text style={[styles.optionMeta, { color: selected ? theme.colors.inverseText : theme.colors.muted }]}>{detail}</Text></View>{selected ? <FocoIcon name="check" size={16} color={theme.colors.inverseText} /> : null}</Pressable>; }
+function NumberField({ label, value, onChange, fallback, min, max }: { label: string; value: string; onChange: (value: string) => void; fallback: number; min: number; max: number }) { const theme = useFocoTheme(); const valid = parseOptionalInteger(value, min, max) !== null; return <View style={styles.field}><Text style={[styles.fieldLabel, { color: theme.colors.muted }]}>{label}</Text><TextInput value={value} onChangeText={onChange} onBlur={() => onChange(normalizeIntegerDraft(value, fallback, min, max))} keyboardType="number-pad" inputMode="numeric" selectTextOnFocus style={[styles.numberInput, { color: theme.colors.text, backgroundColor: theme.colors.panel, borderColor: valid ? theme.colors.border : theme.colors.danger }]} /></View>; }
+function Toggle({ label, value, onChange, last = false }: { label: string; value: boolean; onChange: (value: boolean) => void; last?: boolean }) { const theme = useFocoTheme(); return <View style={[styles.toggleRow, !last && { borderBottomColor: theme.colors.borderSoft, borderBottomWidth: StyleSheet.hairlineWidth }]}><Text style={[styles.toggleLabel, { color: theme.colors.text }]}>{label}</Text><Switch value={value} onValueChange={(next) => { onChange(next); hapticSelection(); }} trackColor={{ false: theme.colors.panelStrong, true: theme.colors.accent }} thumbColor={theme.colors.inverseText} /></View>; }
 
 const styles = StyleSheet.create({
-  modeSwitch: { minHeight: 52, marginTop: 16, padding: 3, borderRadius: 16, backgroundColor: foco.colors.panel, borderWidth: 1, borderColor: foco.colors.border, flexDirection: 'row' },
-  mode: { flex: 1, minHeight: 46, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  modeActive: { backgroundColor: foco.colors.text },
-  modeDisabled: { opacity: 0.35 },
-  modeText: { color: foco.colors.muted, fontSize: 14.5 },
-  modeTextActive: { color: foco.colors.bg, fontWeight: '700' },
-  context: { minHeight: 64, marginTop: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: foco.colors.borderSoft, flexDirection: 'row', alignItems: 'center', gap: 11 },
-  contextIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: foco.colors.panelStrong, alignItems: 'center', justifyContent: 'center' },
+  modeSwitch: { minHeight: 44, marginTop: 9, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', padding: 3 },
+  mode: { flex: 1, minHeight: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  modeText: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, lineHeight: 15 },
+  disabled: { opacity: 0.35 },
+  context: { minHeight: 58, marginTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  contextIcon: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   contextCopy: { flex: 1, minWidth: 0 },
-  contextTitle: { color: foco.colors.text, fontSize: 15.5, fontWeight: '600' },
-  contextMeta: { color: foco.colors.muted, fontSize: 11.5, marginTop: 4 },
-  timerWrap: { height: 296, alignItems: 'center', justifyContent: 'center' },
+  contextTitle: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, lineHeight: 17 },
+  contextMeta: { fontFamily: 'Manrope_400Regular', fontSize: 9.5, lineHeight: 13, marginTop: 2 },
+  timerWrap: { alignItems: 'center', marginTop: 18 },
   timerCopy: { alignItems: 'center' },
-  phase: { color: foco.colors.muted, fontSize: 15 },
-  timer: { color: foco.colors.text, fontSize: 58, lineHeight: 67, fontWeight: '300', letterSpacing: -2.2, marginTop: 5, fontVariant: ['tabular-nums'], minWidth: 195, textAlign: 'center' },
-  cycle: { color: foco.colors.muted, fontSize: 13, marginTop: 4 },
-  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28, marginTop: -5, marginBottom: 18 },
-  secondary: { width: 64, height: 64, borderRadius: 32, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, alignItems: 'center', justifyContent: 'center' },
-  primaryControl: { width: 80, height: 80, borderRadius: 40, borderWidth: 1, borderColor: foco.colors.text, backgroundColor: foco.colors.panel, alignItems: 'center', justifyContent: 'center', ...shadowGlow },
-  primaryRunning: { backgroundColor: '#181A1F' },
-  message: { minHeight: 42, borderRadius: 12, backgroundColor: foco.colors.panelStrong, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, marginBottom: 10 },
-  messageSuccess: { borderWidth: 1, borderColor: '#3F5549' },
-  messageWarning: { borderWidth: 1, borderColor: '#5B4549' },
-  messageText: { color: foco.colors.text, fontSize: 12.5, textAlign: 'center' },
-  sessionSummary: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: foco.colors.borderSoft, paddingVertical: 15 },
+  phase: { fontFamily: 'Manrope_500Medium', fontSize: 11, lineHeight: 14 },
+  timer: { fontFamily: 'Manrope_400Regular', fontSize: 48, lineHeight: 58, letterSpacing: -1.8, fontVariant: ['tabular-nums'], marginTop: 3 },
+  cycle: { fontFamily: 'Manrope_400Regular', fontSize: 9.5, lineHeight: 13, marginTop: 2 },
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 18, marginTop: 13 },
+  secondary: { width: 48, height: 48, borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  primaryControl: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  message: { minHeight: 40, marginTop: 11, borderRadius: 11, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  messageText: { fontFamily: 'Manrope_500Medium', fontSize: 10.5, lineHeight: 14, textAlign: 'center' },
+  summary: { minHeight: 66, marginTop: 12, flexDirection: 'row', alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
   summaryItem: { flex: 1 },
-  summaryValue: { color: foco.colors.text, fontSize: 18.5, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  summaryLabel: { color: foco.colors.muted, fontSize: 11.5, marginTop: 4 },
-  projectChoices: { gap: 7, paddingBottom: 18 },
-  projectChoice: { minHeight: 43, borderRadius: 13, borderWidth: 1, borderColor: foco.colors.border, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' },
-  projectChoiceActive: { backgroundColor: foco.colors.text, borderColor: foco.colors.text },
-  projectChoiceText: { color: foco.colors.muted, fontSize: 12.5 },
-  contextOption: { minHeight: 60, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: foco.colors.borderSoft, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 10 },
-  contextOptionActive: { backgroundColor: foco.colors.text, borderRadius: 14, borderBottomColor: foco.colors.text },
+  summaryValue: { fontFamily: 'Manrope_600SemiBold', fontSize: 15, lineHeight: 19, fontVariant: ['tabular-nums'] },
+  summaryLabel: { fontFamily: 'Manrope_400Regular', fontSize: 9, lineHeight: 12, marginTop: 2 },
+  projectChoices: { gap: 6, paddingBottom: 14 },
+  projectChoice: { minHeight: 40, borderRadius: 11, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  projectChoiceText: { fontFamily: 'Manrope_600SemiBold', fontSize: 11, lineHeight: 14 },
+  contextOption: { minHeight: 54, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 9, borderRadius: 10 },
   optionCopy: { flex: 1, minWidth: 0 },
-  optionTitle: { color: foco.colors.text, fontSize: 14.5, fontWeight: '600' },
-  optionMeta: { color: foco.colors.muted, fontSize: 11.5, marginTop: 3 },
-  optionTextActive: { color: foco.colors.bg },
-  empty: { color: foco.colors.muted, fontSize: 13, textAlign: 'center', paddingVertical: 22 },
-  fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  numberField: { width: '48.5%', minHeight: 78, borderRadius: 14, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, padding: 11 },
-  numberLabel: { color: foco.colors.muted, fontSize: 10.5, fontWeight: '700', letterSpacing: 0.5 },
-  numberInputRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 7 },
-  numberInput: { flex: 1, color: foco.colors.text, fontSize: 21, fontWeight: '600', padding: 0, fontVariant: ['tabular-nums'] },
-  numberSuffix: { color: foco.colors.muted, fontSize: 11.5, paddingBottom: 3 },
-  toggleRow: { minHeight: 56, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: foco.colors.borderSoft, flexDirection: 'row', alignItems: 'center' },
-  toggleLabel: { flex: 1, color: foco.colors.text, fontSize: 14 },
-  toggle: { width: 44, height: 26, borderRadius: 13, backgroundColor: '#30333A', padding: 3 },
-  toggleActive: { backgroundColor: foco.colors.text },
-  toggleKnob: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#8B8E95' },
-  toggleKnobActive: { transform: [{ translateX: 18 }], backgroundColor: foco.colors.bg },
+  optionTitle: { fontFamily: 'Manrope_600SemiBold', fontSize: 12.5, lineHeight: 16 },
+  optionMeta: { fontFamily: 'Manrope_400Regular', fontSize: 9.5, lineHeight: 13, marginTop: 1 },
+  empty: { fontFamily: 'Manrope_400Regular', fontSize: 10.5, lineHeight: 15, paddingVertical: 16 },
+  fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  field: { width: '48%' },
+  fieldLabel: { fontFamily: 'Manrope_700Bold', fontSize: 8.5, lineHeight: 12, letterSpacing: 0.6, marginBottom: 4 },
+  numberInput: { minHeight: 44, borderRadius: 11, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 11, fontFamily: 'Manrope_600SemiBold', fontSize: 14, lineHeight: 18, fontVariant: ['tabular-nums'], marginBottom: 8 },
+  toggleRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center' },
+  toggleLabel: { flex: 1, fontFamily: 'Manrope_500Medium', fontSize: 12, lineHeight: 16, paddingRight: 10 },
 });

@@ -1,16 +1,17 @@
 import { Tabs } from 'expo-router';
 
 import { FocoTabBar } from '@/src/ui/FocoTabBar';
-import { foco } from '@/src/ui/focoTheme';
+import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 
 export default function TabsLayout() {
+  const theme = useFocoTheme();
   return (
     <Tabs
       backBehavior="history"
       tabBar={(props) => <FocoTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: foco.colors.bg },
+        sceneStyle: { backgroundColor: theme.colors.bg },
         tabBarHideOnKeyboard: true,
         animation: 'none',
         lazy: true,

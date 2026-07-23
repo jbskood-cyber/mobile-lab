@@ -19,13 +19,14 @@ function buildState() {
   return model.completeTask(state, completedId, NOW).state;
 }
 
-test('agenda groups open tasks into overdue, today, upcoming, no date and completed', () => {
+test('agenda groups open tasks into overdue, today, upcoming, Inbox and completed', () => {
   const buckets = getAgendaBuckets(buildState(), NOW);
 
   assert.deepEqual(buckets.overdue.map((task) => task.title), ['Atrasada']);
   assert.deepEqual(buckets.today.map((task) => task.title), ['Hoy']);
   assert.deepEqual(buckets.upcoming.map((task) => task.title), ['Próxima']);
-  assert.deepEqual(buckets.noDate.map((task) => task.title), ['Sin fecha']);
+  assert.deepEqual(buckets.noDate.map((task) => task.title), []);
+  assert.deepEqual(buckets.inbox.map((task) => task.title), ['Sin fecha']);
   assert.deepEqual(buckets.completed.map((task) => task.title), ['Terminada']);
 });
 
