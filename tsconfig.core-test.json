@@ -9,7 +9,13 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "outDir": ".core-test-dist",
-    "rootDir": "src/core"
+    "rootDir": "src"
   },
-  "include": ["src/core/model.ts", "src/core/focusTimer.ts"]
+  "include": [
+    "src/core/model.ts",
+    "src/core/focusTimer.ts",
+    "src/core/hydration.ts",
+    "src/ui/uiState.ts",
+    "src/ui/formModel.ts"
+  ]
 }
