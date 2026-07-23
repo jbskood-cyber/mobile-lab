@@ -8,13 +8,13 @@ export const typeScale = {
   title: {
     fontSize: 22,
     lineHeight: 27,
-    fontWeight: '650' as const,
+    fontWeight: '600' as const,
     letterSpacing: -0.35,
   },
   section: {
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: '650' as const,
+    fontWeight: '600' as const,
   },
   body: {
     fontSize: 15,
@@ -29,12 +29,12 @@ export const typeScale = {
   caption: {
     fontSize: 11.5,
     lineHeight: 15,
-    fontWeight: '550' as const,
+    fontWeight: '500' as const,
   },
   metric: {
     fontSize: 21,
     lineHeight: 25,
-    fontWeight: '650' as const,
+    fontWeight: '600' as const,
     fontVariant: ['tabular-nums'] as const,
   },
 } as const;
