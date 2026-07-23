@@ -1,11 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { foco, shadowGlow } from './focoTheme';
 import { pressedStyle } from './premium';
 
 export function UndoBar({ message, actionLabel = 'Deshacer', onAction }: { message: string; actionLabel?: string; onAction: () => void }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View accessibilityLiveRegion="polite" style={styles.bar}>
+    <View accessibilityLiveRegion="polite" style={[styles.bar, { bottom: Math.max(82, insets.bottom + 74) }]}>
       <Text style={styles.message} numberOfLines={2}>{message}</Text>
       <Pressable
         accessibilityRole="button"
@@ -22,21 +24,22 @@ export function UndoBar({ message, actionLabel = 'Deshacer', onAction }: { messa
 const styles = StyleSheet.create({
   bar: {
     position: 'absolute',
-    left: 18,
-    right: 18,
-    bottom: 92,
-    minHeight: 58,
-    borderRadius: 17,
+    zIndex: 50,
+    elevation: 14,
+    left: 16,
+    right: 16,
+    minHeight: 56,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: foco.colors.border,
     backgroundColor: '#17191E',
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingLeft: 15,
+    paddingRight: 7,
     flexDirection: 'row',
     alignItems: 'center',
     ...shadowGlow,
   },
-  message: { flex: 1, color: foco.colors.text, fontSize: 14 },
-  action: { minWidth: 82, minHeight: 46, alignItems: 'center', justifyContent: 'center', borderRadius: 13 },
-  actionText: { color: foco.colors.text, fontSize: 14, fontWeight: '700' },
+  message: { flex: 1, color: foco.colors.text, fontSize: 13.5, lineHeight: 18 },
+  action: { minWidth: 80, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 13 },
+  actionText: { color: foco.colors.text, fontSize: 13.5, fontWeight: '700' },
 });
