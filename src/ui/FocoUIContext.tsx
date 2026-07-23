@@ -49,6 +49,7 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
   const [appMenuVisible, setAppMenuVisible] = useState(false);
   const [undo, setUndo] = useState<UndoRequest | null>(null);
   const undoId = useRef(0);
+  const undoRef = useRef<UndoRequest | null>(null);
   const scrollTargets = useRef(new Map<string, ScrollTarget>());
 
   useEffect(() => {
@@ -62,7 +63,11 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (!undo) return;
-    const timeout = setTimeout(() => setUndo((current) => current?.id === undo.id ? null : current), 4500);
+    const timeout = setTimeout(() => {
+      if (undoRef.current?.id !== undo.id) return;
+      undoRef.current = null;
+      setUndo(null);
+    }, 4500);
     return () => clearTimeout(timeout);
   }, [undo]);
 
@@ -84,17 +89,23 @@ export function FocoUIProvider({ children }: PropsWithChildren) {
 
   const showUndo = useCallback((message: string, onAction: () => void, actionLabel = 'Deshacer') => {
     undoId.current += 1;
-    setUndo({ id: undoId.current, message, onAction, actionLabel });
+    const request = { id: undoId.current, message, onAction, actionLabel };
+    undoRef.current = request;
+    setUndo(request);
   }, []);
 
   const runUndo = useCallback(() => {
-    setUndo((current) => {
-      current?.onAction();
-      return null;
-    });
+    const current = undoRef.current;
+    if (!current) return;
+    undoRef.current = null;
+    setUndo(null);
+    current.onAction();
   }, []);
 
-  const dismissUndo = useCallback(() => setUndo(null), []);
+  const dismissUndo = useCallback(() => {
+    undoRef.current = null;
+    setUndo(null);
+  }, []);
 
   const registerScrollTarget = useCallback((key: string, target: ScrollTarget) => {
     scrollTargets.current.set(key, target);
