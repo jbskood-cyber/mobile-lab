@@ -58,6 +58,16 @@ export async function cancelScheduledNotification(identifier?: string) {
   }
 }
 
+async function cancelTaskReminders(taskId: string) {
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const matches = scheduled.filter((item) => item.content.data?.type === 'task' && item.content.data?.taskId === taskId);
+    await Promise.all(matches.map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)));
+  } catch {
+    // Reconciliation can safely retry on the next edit.
+  }
+}
+
 export async function scheduleTaskReminder(task: Task) {
   const request = buildReminderRequest(task);
   if (!request || !(await ensureNotificationPermission())) return undefined;
@@ -77,7 +87,8 @@ export async function scheduleTaskReminder(task: Task) {
 }
 
 export async function syncTaskReminder(previous: Task | undefined, next: Task | undefined) {
-  if (previous?.notificationId) await cancelScheduledNotification(previous.notificationId);
+  const taskId = next?.id ?? previous?.id;
+  if (taskId) await cancelTaskReminders(taskId);
   if (!next || next.completed || next.reminderAt === undefined) return undefined;
   return scheduleTaskReminder(next);
 }
