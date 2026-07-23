@@ -3,10 +3,10 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": ".test-dist",
+    "rootDir": ".",
     "module": "commonjs",
     "moduleResolution": "node",
-    "target": "ES2022",
-    "types": ["node"]
+    "target": "ES2022"
   },
-  "include": ["src/features/today/model.ts", "tests/**/*.test.ts"]
+  "include": ["src/features/today/model.ts"]
 }
