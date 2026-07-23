@@ -15,9 +15,7 @@ import {
   getTimerProgress,
   getTimerSeconds,
   pauseTimer,
-  recomputeRuntime,
   resetTimer,
-  runtimeFromPreferences,
   setTimerMode,
   startTimer,
   type FocusRuntime,
@@ -29,11 +27,12 @@ const TIMER_KEY = 'foco:timer:v2';
 const LEGACY_TIMER_KEY = 'foco:timer:v1';
 
 type TimerMessage = { text: string; tone: 'neutral' | 'success' | 'warning' };
+type StoredRuntime = Omit<Partial<FocusRuntime>, 'phase'> & { phase?: FocusPhase | 'break'; breakSeconds?: number };
 
 function normalizeRuntime(value: unknown, preferences: FocusPreferences): FocusRuntime {
   const fallback = createFocusRuntime(preferences);
   if (!value || typeof value !== 'object') return fallback;
-  const candidate = value as Partial<FocusRuntime> & { phase?: FocusPhase | 'break'; breakSeconds?: number };
+  const candidate = value as StoredRuntime;
   const mode: FocusMode = candidate.mode === 'stopwatch' ? 'stopwatch' : 'pomodoro';
   const phase: FocusPhase = candidate.phase === 'longBreak' ? 'longBreak' : candidate.phase === 'shortBreak' || candidate.phase === 'break' ? 'shortBreak' : 'focus';
   const runtime = configureTimer(fallback, {
@@ -48,6 +47,7 @@ function normalizeRuntime(value: unknown, preferences: FocusPreferences): FocusR
     projectId: candidate.projectId,
     taskId: candidate.taskId,
   });
+  const phaseTotal = phase === 'focus' ? runtime.focusSeconds : phase === 'longBreak' ? runtime.longBreakSeconds : runtime.shortBreakSeconds;
   return {
     ...runtime,
     mode,
@@ -55,7 +55,7 @@ function normalizeRuntime(value: unknown, preferences: FocusPreferences): FocusR
     currentCycle: Math.max(1, Math.min(runtime.targetCycles, Math.round(candidate.currentCycle ?? 1))),
     running: Boolean(candidate.running),
     anchorMs: Math.max(0, Number(candidate.anchorMs ?? 0)),
-    baseSeconds: Math.max(0, Number(candidate.baseSeconds ?? (mode === 'stopwatch' ? 0 : getPhaseTotalSeconds({ ...runtime, phase })))),
+    baseSeconds: Math.max(0, Number(candidate.baseSeconds ?? (mode === 'stopwatch' ? 0 : phaseTotal))),
   };
 }
 
@@ -73,8 +73,8 @@ export function useFocusTimer(projectId: string, taskId?: string) {
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState<TimerMessage | null>(null);
   const lastCompletedAnchor = useRef<number | null>(null);
-  const completeNotification = useRef<string | undefined>();
-  const warningNotification = useRef<string | undefined>();
+  const completeNotification = useRef<string | undefined>(undefined);
+  const warningNotification = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
@@ -83,7 +83,8 @@ export function useFocusTimer(projectId: string, taskId?: string) {
         const stored = await Storage.getItem(TIMER_KEY) ?? await Storage.getItem(LEGACY_TIMER_KEY);
         if (!active) return;
         const parsed = stored ? JSON.parse(stored) : undefined;
-        setRuntime({ ...normalizeRuntime(parsed, state.preferences), projectId: (parsed as FocusRuntime | undefined)?.projectId ?? projectId, taskId: (parsed as FocusRuntime | undefined)?.taskId ?? taskId });
+        const hydrated = normalizeRuntime(parsed, state.preferences);
+        setRuntime({ ...hydrated, projectId: hydrated.projectId ?? projectId, taskId: hydrated.taskId ?? taskId });
       } catch {
         if (active) setRuntime({ ...createFocusRuntime(state.preferences), projectId, taskId });
       } finally {
@@ -94,19 +95,14 @@ export function useFocusTimer(projectId: string, taskId?: string) {
       }
     })();
     return () => { active = false; };
-    // Initial hydration must happen once; route context is reconciled separately.
+    // Initial hydration is intentionally one-shot; context is reconciled below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!ready || runtime.running) return;
-    setRuntime((current) => ({ ...current, projectId, taskId }));
+    setRuntime((current) => current.projectId === projectId && current.taskId === taskId ? current : { ...current, projectId, taskId });
   }, [projectId, ready, runtime.running, taskId]);
-
-  useEffect(() => {
-    if (!ready || runtime.running) return;
-    setRuntime((current) => runtimeFromPreferences(current, state.preferences));
-  }, [ready, runtime.running, state.preferences]);
 
   useEffect(() => {
     if (!ready || resetToken === 0) return;
@@ -138,10 +134,7 @@ export function useFocusTimer(projectId: string, taskId?: string) {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState !== 'active') return;
-      const timestamp = Date.now();
-      setRuntime((current) => recomputeRuntime(current, timestamp));
-      setNow(timestamp);
+      if (nextState === 'active') setNow(Date.now());
     });
     return () => subscription.remove();
   }, []);
@@ -221,32 +214,30 @@ export function useFocusTimer(projectId: string, taskId?: string) {
 
   const stop = useCallback(() => {
     const endedAt = Date.now();
-    setRuntime((current) => {
-      const durationSec = getRecordedDuration(current, endedAt);
-      if (durationSec >= 60) {
-        addSession({
-          projectId: current.projectId ?? projectId,
-          taskId: current.taskId,
-          mode: current.mode,
-          phase: current.phase,
-          startedAt: endedAt - durationSec * 1000,
-          endedAt,
-          durationSec,
-          plannedSec: current.mode === 'stopwatch' ? Math.max(durationSec, current.focusSeconds) : getPhaseTotalSeconds(current),
-          completed: false,
-          interrupted: true,
-          cycleNumber: current.currentCycle,
-        });
-        setMessage({ text: current.phase === 'focus' ? 'Sesión parcial guardada.' : 'Descanso interrumpido registrado.', tone: 'success' });
-        hapticSuccess();
-      } else {
-        setMessage({ text: 'Sesión demasiado breve para registrarla.', tone: 'warning' });
-        hapticWarning();
-      }
-      return resetTimer(current);
-    });
+    const durationSec = getRecordedDuration(runtime, endedAt);
+    if (durationSec >= 60) {
+      addSession({
+        projectId: runtime.projectId ?? projectId,
+        taskId: runtime.taskId,
+        mode: runtime.mode,
+        phase: runtime.phase,
+        startedAt: endedAt - durationSec * 1000,
+        endedAt,
+        durationSec,
+        plannedSec: runtime.mode === 'stopwatch' ? Math.max(durationSec, runtime.focusSeconds) : getPhaseTotalSeconds(runtime),
+        completed: false,
+        interrupted: true,
+        cycleNumber: runtime.currentCycle,
+      });
+      setMessage({ text: runtime.phase === 'focus' ? 'Sesión parcial guardada.' : 'Descanso interrumpido registrado.', tone: 'success' });
+      hapticSuccess();
+    } else {
+      setMessage({ text: 'Sesión demasiado breve para registrarla.', tone: 'warning' });
+      hapticWarning();
+    }
+    setRuntime(resetTimer(runtime));
     setNow(endedAt);
-  }, [addSession, projectId]);
+  }, [addSession, projectId, runtime]);
 
   const reset = useCallback(() => {
     setRuntime((current) => resetTimer(current));
