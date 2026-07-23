@@ -3,27 +3,34 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { useRouter } from 'expo-router';
 
 import { getAgendaBuckets, getTasksForDate, searchTasks } from '@/src/core/agenda';
+import { getTasksForCalendarDay } from '@/src/core/calendar';
 import { useFocoStore } from '@/src/core/FocoStore';
-import { startOfLocalDay, type Task } from '@/src/core/model';
+import { DAY_MS, startOfLocalDay, type Task } from '@/src/core/model';
 import { TaskEditorSheet } from '@/src/features/tasks/TaskEditorSheet';
 import { TaskRow } from '@/src/features/tasks/TaskRow';
 import { FocoIcon } from '@/src/ui/FocoIcon';
 import { FocoScreen, SectionTitle } from '@/src/ui/FocoShell';
+import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 import { useFocoUI } from '@/src/ui/FocoUIContext';
-import { foco } from '@/src/ui/focoTheme';
 import { hapticSelection, hapticSuccess, pressedStyle } from '@/src/ui/premium';
+import { DayTimeline } from './DayTimeline';
+import { MonthCalendar } from './MonthCalendar';
 
-type SmartList = 'Hoy' | 'Próximas' | 'Sin fecha' | 'Completadas' | 'Todas';
-const DAY = 24 * 60 * 60 * 1000;
+export type AgendaMode = 'Calendario' | 'Día' | 'Listas';
+type SmartList = 'Hoy' | 'Próximas' | 'Inbox' | 'Completadas' | 'Todas';
 
 export function AgendaScreen() {
   const router = useRouter();
+  const theme = useFocoTheme();
   const { state, completeTask, reopenTask, deleteTask } = useFocoStore();
   const { showUndo } = useFocoUI();
+  const [mode, setMode] = useState<AgendaMode>('Calendario');
   const [smartList, setSmartList] = useState<SmartList>('Hoy');
   const [selectedDate, setSelectedDate] = useState(startOfLocalDay(Date.now()));
+  const [monthAnchor, setMonthAnchor] = useState(startOfLocalDay(Date.now()));
   const [query, setQuery] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
+  const [draftStart, setDraftStart] = useState<number | undefined>();
   const buckets = useMemo(() => getAgendaBuckets(state), [state]);
   const projectMap = useMemo(() => new Map(state.projects.map((project) => [project.id, project.name])), [state.projects]);
   const pomodoros = useMemo(() => {
@@ -32,70 +39,99 @@ export function AgendaScreen() {
     return values;
   }, [state.sessions]);
 
+  const dayTasks = useMemo(() => getTasksForCalendarDay(state, selectedDate), [selectedDate, state]);
   const listTasks = useMemo(() => {
     let tasks: Task[];
     if (query.trim()) tasks = searchTasks(state, query);
     else if (smartList === 'Hoy') tasks = [...buckets.overdue, ...getTasksForDate(state, selectedDate).filter((task) => !task.completed)];
     else if (smartList === 'Próximas') tasks = buckets.upcoming;
-    else if (smartList === 'Sin fecha') tasks = buckets.noDate;
+    else if (smartList === 'Inbox') tasks = state.tasks.filter((task) => task.captured && !task.completed);
     else if (smartList === 'Completadas') tasks = buckets.completed;
     else tasks = state.tasks;
     return [...new Map(tasks.map((task) => [task.id, task])).values()];
   }, [buckets, query, selectedDate, smartList, state]);
 
+  const openTask = (task: Task) => router.push({ pathname: '/task/[id]', params: { id: task.id } });
+  const openEditor = (start?: number) => { setDraftStart(start); setEditorOpen(true); };
   const toggle = (task: Task) => {
     if (task.completed) return reopenTask(task.id);
     const result = completeTask(task.id);
     if (!result) return;
     hapticSuccess();
-    showUndo(`${task.title} completada`, () => {
-      reopenTask(task.id);
-      if (result.generatedTask) deleteTask(result.generatedTask.id);
-    });
+    showUndo(`${task.title} completada`, () => { reopenTask(task.id); if (result.generatedTask) deleteTask(result.generatedTask.id); });
   };
+
+  const renderRows = (tasks: Task[]) => tasks.map((task) => <TaskRow key={task.id} task={task} projectName={projectMap.get(task.projectId) ?? 'Sin proyecto'} completedPomodoros={pomodoros.get(task.id) ?? 0} onPress={() => openTask(task)} onToggle={() => toggle(task)} />);
+  const dateLabel = new Date(selectedDate).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, (value) => value.toUpperCase());
 
   return (
     <>
-      <FocoScreen title="Agenda" subtitle="Organiza por fecha, no por tarjetas." screenKey="agenda" rightIcon="plus" rightAccessibilityLabel="Crear tarea" onRightPress={() => setEditorOpen(true)}>
-        <View style={styles.search}>
-          <FocoIcon name="search" size={20} color={foco.colors.muted} />
-          <TextInput value={query} onChangeText={setQuery} placeholder="Buscar tareas, notas o proyectos" placeholderTextColor={foco.colors.subtle} returnKeyType="search" style={styles.searchInput} />
-          {query ? <Pressable accessibilityLabel="Limpiar búsqueda" onPress={() => setQuery('')} style={({ pressed }) => [styles.clear, pressed && pressedStyle]}><FocoIcon name="plus" size={17} color={foco.colors.muted} style={styles.closeIcon} /></Pressable> : null}
+      <FocoScreen title="Agenda" subtitle={dateLabel} screenKey="agenda" rightIcon="plus" rightAccessibilityLabel="Crear tarea" onRightPress={() => openEditor(mode === 'Día' ? selectedDate + 9 * 60 * 60 * 1000 : undefined)}>
+        <View style={[styles.search, { borderColor: theme.colors.border, backgroundColor: theme.colors.panel }]}>
+          <FocoIcon name="search" size={18} color={theme.colors.muted} />
+          <TextInput value={query} onChangeText={(value) => { setQuery(value); if (value) setMode('Listas'); }} placeholder="Buscar tareas, notas o proyectos" placeholderTextColor={theme.colors.subtle} returnKeyType="search" style={[styles.searchInput, { color: theme.colors.text }]} />
+          {query ? <Pressable accessibilityLabel="Limpiar búsqueda" onPress={() => setQuery('')} style={({ pressed }) => [styles.clear, pressed && pressedStyle]}><FocoIcon name="plus" size={16} color={theme.colors.muted} style={styles.closeIcon} /></Pressable> : null}
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.smartLists}>
-          {(['Hoy', 'Próximas', 'Sin fecha', 'Completadas', 'Todas'] as SmartList[]).map((item) => <Pressable key={item} accessibilityRole="radio" accessibilityState={{ checked: smartList === item }} onPress={() => { setSmartList(item); setQuery(''); hapticSelection(); }} style={({ pressed }) => [styles.smartChip, smartList === item && styles.smartChipActive, pressed && pressedStyle]}><Text style={[styles.smartText, smartList === item && styles.smartTextActive]}>{item}</Text></Pressable>)}
-        </ScrollView>
-        {smartList === 'Hoy' && !query ? <DateStrip selected={selectedDate} onSelect={setSelectedDate} /> : null}
-        <SectionTitle title={query ? 'Resultados' : smartList} detail={`${listTasks.length} ${listTasks.length === 1 ? 'tarea' : 'tareas'}`} />
-        {listTasks.length > 0 ? listTasks.map((task) => <TaskRow key={task.id} task={task} projectName={projectMap.get(task.projectId) ?? 'Sin proyecto'} completedPomodoros={pomodoros.get(task.id) ?? 0} onPress={() => router.push({ pathname: '/task/[id]', params: { id: task.id } })} onToggle={() => toggle(task)} />) : <View style={styles.empty}><FocoIcon name="calendar" size={27} color={foco.colors.text} /><Text style={styles.emptyTitle}>Nada en esta vista</Text><Text style={styles.emptyCopy}>Crea una tarea o cambia el filtro.</Text></View>}
+
+        <View style={[styles.segmented, { backgroundColor: theme.colors.panelSoft, borderColor: theme.colors.borderSoft }]}>
+          {(['Calendario', 'Día', 'Listas'] as AgendaMode[]).map((item) => <Pressable key={item} accessibilityRole="tab" accessibilityState={{ selected: mode === item }} onPress={() => { setMode(item); setQuery(''); hapticSelection(); }} style={({ pressed }) => [styles.segment, mode === item && { backgroundColor: theme.colors.inverse }, pressed && pressedStyle]}><Text style={[styles.segmentText, { color: mode === item ? theme.colors.inverseText : theme.colors.muted }]}>{item}</Text></Pressable>)}
+        </View>
+
+        {mode === 'Calendario' ? (
+          <>
+            <MonthCalendar state={state} anchor={monthAnchor} selected={selectedDate} onAnchor={setMonthAnchor} onSelect={setSelectedDate} />
+            <SectionTitle title="Plan del día" detail={`${dayTasks.length} ${dayTasks.length === 1 ? 'elemento' : 'elementos'}`} />
+            {dayTasks.length > 0 ? renderRows(dayTasks) : <Empty title="Día disponible" copy="Toca + para planificar o abre la vista Día y toca una hora." />}
+          </>
+        ) : null}
+
+        {mode === 'Día' ? (
+          <>
+            <View style={styles.dayNavigator}>
+              <Pressable accessibilityLabel="Día anterior" onPress={() => setSelectedDate((value) => value - DAY_MS)} style={({ pressed }) => [styles.dayArrow, pressed && pressedStyle]}><FocoIcon name="chevron-left" size={18} color={theme.colors.muted} /></Pressable>
+              <Pressable onPress={() => setSelectedDate(startOfLocalDay(Date.now()))} style={({ pressed }) => [styles.todayButton, { borderColor: theme.colors.border }, pressed && pressedStyle]}><Text style={[styles.todayText, { color: theme.colors.text }]}>Hoy</Text></Pressable>
+              <Pressable accessibilityLabel="Día siguiente" onPress={() => setSelectedDate((value) => value + DAY_MS)} style={({ pressed }) => [styles.dayArrow, pressed && pressedStyle]}><FocoIcon name="chevron-right" size={18} color={theme.colors.muted} /></Pressable>
+            </View>
+            <DayTimeline state={state} day={selectedDate} onTask={openTask} onSlot={openEditor} />
+          </>
+        ) : null}
+
+        {mode === 'Listas' ? (
+          <>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.smartLists}>
+              {(['Hoy', 'Próximas', 'Inbox', 'Completadas', 'Todas'] as SmartList[]).map((item) => <Pressable key={item} accessibilityRole="radio" accessibilityState={{ checked: smartList === item }} onPress={() => { setSmartList(item); setQuery(''); hapticSelection(); }} style={({ pressed }) => [styles.smartChip, { borderColor: theme.colors.border }, smartList === item && { backgroundColor: theme.colors.inverse, borderColor: theme.colors.inverse }, pressed && pressedStyle]}><Text style={[styles.smartText, { color: smartList === item ? theme.colors.inverseText : theme.colors.muted }]}>{item}</Text></Pressable>)}
+            </ScrollView>
+            <SectionTitle title={query ? 'Resultados' : smartList} detail={`${listTasks.length} ${listTasks.length === 1 ? 'tarea' : 'tareas'}`} />
+            {listTasks.length > 0 ? renderRows(listTasks) : <Empty title="Nada en esta vista" copy="Captura una tarea o cambia el filtro." />}
+          </>
+        ) : null}
       </FocoScreen>
-      <TaskEditorSheet visible={editorOpen} defaultDueAt={smartList === 'Sin fecha' ? undefined : selectedDate + 9 * 60 * 60 * 1000} onClose={() => setEditorOpen(false)} />
+      <TaskEditorSheet visible={editorOpen} defaultDueAt={draftStart ? draftStart + state.planning.defaultTaskDurationMinutes * 60_000 : selectedDate + 18 * 60 * 60 * 1000} defaultPlannedStartAt={draftStart} onClose={() => { setEditorOpen(false); setDraftStart(undefined); }} />
     </>
   );
 }
 
-function DateStrip({ selected, onSelect }: { selected: number; onSelect: (value: number) => void }) {
-  const start = startOfLocalDay(Date.now()) - 2 * DAY;
-  return <View style={styles.dateStrip}>{Array.from({ length: 7 }, (_, index) => start + index * DAY).map((timestamp) => { const date = new Date(timestamp); const active = timestamp === selected; return <Pressable key={timestamp} accessibilityRole="radio" accessibilityState={{ checked: active }} onPress={() => { onSelect(timestamp); hapticSelection(); }} style={({ pressed }) => [styles.dateItem, active && styles.dateActive, pressed && pressedStyle]}><Text style={[styles.weekday, active && styles.dateTextActive]}>{date.toLocaleDateString('es-MX', { weekday: 'short' }).slice(0, 2)}</Text><Text style={[styles.day, active && styles.dateTextActive]}>{date.getDate()}</Text></Pressable>; })}</View>;
+function Empty({ title, copy }: { title: string; copy: string }) {
+  const theme = useFocoTheme();
+  return <View style={[styles.empty, { borderBottomColor: theme.colors.borderSoft }]}><FocoIcon name="calendar" size={23} color={theme.colors.text} /><Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{title}</Text><Text style={[styles.emptyCopy, { color: theme.colors.muted }]}>{copy}</Text></View>;
 }
 
 const styles = StyleSheet.create({
-  search: { minHeight: 54, marginTop: 16, borderRadius: 15, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, flexDirection: 'row', alignItems: 'center', paddingLeft: 14 },
-  searchInput: { flex: 1, color: foco.colors.text, fontSize: 14.5, paddingHorizontal: 11, paddingVertical: 13 },
-  clear: { width: 46, height: 52, alignItems: 'center', justifyContent: 'center' },
+  search: { minHeight: 46, marginTop: 10, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', paddingLeft: 12 },
+  searchInput: { flex: 1, fontFamily: 'Manrope_400Regular', fontSize: 13.5, lineHeight: 18, paddingHorizontal: 9, paddingVertical: 10 },
+  clear: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   closeIcon: { transform: [{ rotate: '45deg' }] },
-  smartLists: { gap: 7, paddingVertical: 12 },
-  smartChip: { minHeight: 42, paddingHorizontal: 14, borderRadius: 13, borderWidth: 1, borderColor: foco.colors.border, alignItems: 'center', justifyContent: 'center' },
-  smartChipActive: { backgroundColor: foco.colors.text, borderColor: foco.colors.text },
-  smartText: { color: foco.colors.muted, fontSize: 13 },
-  smartTextActive: { color: foco.colors.bg, fontWeight: '700' },
-  dateStrip: { flexDirection: 'row', gap: 5, paddingVertical: 4 },
-  dateItem: { flex: 1, minHeight: 58, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  dateActive: { backgroundColor: foco.colors.panelStrong },
-  weekday: { color: foco.colors.muted, fontSize: 10.5, textTransform: 'uppercase' },
-  day: { color: foco.colors.text, fontSize: 16, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  dateTextActive: { color: foco.colors.white },
-  empty: { minHeight: 180, alignItems: 'center', justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: foco.colors.borderSoft },
-  emptyTitle: { color: foco.colors.text, fontSize: 16, fontWeight: '600', marginTop: 12 },
-  emptyCopy: { color: foco.colors.muted, fontSize: 12.5, marginTop: 5 },
+  segmented: { minHeight: 44, marginTop: 8, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', padding: 3 },
+  segment: { flex: 1, minHeight: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5, lineHeight: 15 },
+  dayNavigator: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, marginTop: 5 },
+  dayArrow: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  todayButton: { minHeight: 36, borderWidth: StyleSheet.hairlineWidth, borderRadius: 11, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
+  todayText: { fontFamily: 'Manrope_600SemiBold', fontSize: 11.5 },
+  smartLists: { gap: 6, paddingVertical: 9 },
+  smartChip: { minHeight: 38, paddingHorizontal: 12, borderRadius: 11, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  smartText: { fontFamily: 'Manrope_500Medium', fontSize: 11.5, lineHeight: 15 },
+  empty: { minHeight: 126, alignItems: 'center', justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 18 },
+  emptyTitle: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, lineHeight: 18, marginTop: 8 },
+  emptyCopy: { fontFamily: 'Manrope_400Regular', fontSize: 11.5, lineHeight: 16, textAlign: 'center', marginTop: 3 },
 });
