@@ -1,226 +1,98 @@
-import { memo, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { useFocoStore } from '@/src/core/FocoStore';
-import { formatDuration, getProjectMetrics, type Project, type ProjectIcon, type ProjectMetrics } from '@/src/core/model';
+import { formatDuration, getProjectMetrics, type Project } from '@/src/core/model';
+import { ProjectEditorSheet } from './ProjectEditorSheet';
 import { FocoIcon, type IconName } from '@/src/ui/FocoIcon';
-import { FocoScreen, Surface } from '@/src/ui/FocoShell';
-import { FieldLabel, FocoSheet, SheetButton } from '@/src/ui/FocoSheet';
-import { useFocoUI } from '@/src/ui/FocoUIContext';
-import { ProgressRing } from '@/src/ui/ProgressRing';
+import { FocoScreen, SectionTitle } from '@/src/ui/FocoShell';
 import { foco } from '@/src/ui/focoTheme';
-import { hapticSelection, hapticSuccess, hapticWarning, pressedStyle } from '@/src/ui/premium';
+import { hapticSelection, pressedStyle } from '@/src/ui/premium';
 
-type Filter = 'Todos' | 'Activos' | 'Archivados';
-const iconOptions: ProjectIcon[] = ['briefcase', 'book', 'heart', 'grid', 'bulb', 'archive'];
-type ProjectRowModel = { project: Project; metrics: ProjectMetrics };
+type Filter = 'Activos' | 'Archivados';
 
 export function ProjectsScreen() {
-  const { state, addProject, toggleProjectArchived } = useFocoStore();
-  const { showUndo } = useFocoUI();
-  const [filter, setFilter] = useState<Filter>('Todos');
+  const router = useRouter();
+  const { state } = useFocoStore();
   const [query, setQuery] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
-  const [projectName, setProjectName] = useState('');
-  const [projectIcon, setProjectIcon] = useState<ProjectIcon>('grid');
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-
-  const activeCount = state.projects.filter((project) => !project.archived).length;
-  const archivedCount = state.projects.length - activeCount;
-  const duplicate = state.projects.some((project) => project.name.toLowerCase() === projectName.trim().toLowerCase());
-  const visible = useMemo<ProjectRowModel[]>(() => state.projects.filter((project) => {
-    const filterMatch = filter === 'Todos' || (filter === 'Activos' ? !project.archived : project.archived);
-    return filterMatch && project.name.toLowerCase().includes(query.trim().toLowerCase());
-  }).map((project) => ({ project, metrics: getProjectMetrics(state, project.id) })), [filter, query, state]);
-  const active = visible.filter((row) => !row.project.archived);
-  const archived = visible.filter((row) => row.project.archived);
-
-  const openCreate = () => {
-    setProjectName('');
-    setProjectIcon('grid');
-    setCreateOpen(true);
-    hapticSelection();
-  };
-
-  const saveProject = () => {
-    if (!projectName.trim() || duplicate) return;
-    addProject(projectName, projectIcon);
-    setProjectName('');
-    setProjectIcon('grid');
-    setCreateOpen(false);
-    hapticSuccess();
-  };
-
-  const archiveSelected = () => {
-    if (!selectedProject) return;
-    const project = selectedProject;
-    toggleProjectArchived(project.id);
-    setSelectedProject(null);
-    showUndo(`${project.name} ${project.archived ? 'restaurado' : 'archivado'}`, () => {
-      toggleProjectArchived(project.id);
-      hapticSelection();
-    });
-    hapticWarning();
-  };
+  const [filter, setFilter] = useState<Filter>('Activos');
+  const [editorOpen, setEditorOpen] = useState(false);
+  const visible = useMemo(() => state.projects
+    .filter((project) => (filter === 'Activos' ? !project.archived : project.archived))
+    .filter((project) => project.name.toLocaleLowerCase('es').includes(query.trim().toLocaleLowerCase('es')))
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'es')),
+  [filter, query, state.projects]);
 
   return (
-    <FocoScreen title="Proyectos" screenKey="projects" rightIcon="plus" rightAccessibilityLabel="Crear proyecto" onRightPress={openCreate}>
-      <Surface style={styles.searchBox}>
-        <FocoIcon name="search" size={21} color={foco.colors.muted} />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          autoCapitalize="none"
-          autoCorrect={false}
-          placeholder="Buscar proyectos"
-          placeholderTextColor={foco.colors.muted}
-          style={styles.searchInput}
-          accessibilityLabel="Buscar proyectos"
-          returnKeyType="search"
-        />
-        <View style={styles.clearSlot}>
-          {query ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Limpiar búsqueda" onPress={() => setQuery('')} style={({ pressed }) => [styles.clearSearch, pressed && pressedStyle]}>
-              <FocoIcon name="plus" size={19} color={foco.colors.muted} style={styles.closeIcon} />
-            </Pressable>
-          ) : null}
+    <>
+      <FocoScreen title="Proyectos" subtitle="Resultados, tareas y tiempo en un solo lugar." screenKey="projects" rightIcon="plus" rightAccessibilityLabel="Crear proyecto" onRightPress={() => setEditorOpen(true)}>
+        <View style={styles.search}>
+          <FocoIcon name="search" size={20} color={foco.colors.muted} />
+          <TextInput value={query} onChangeText={setQuery} placeholder="Buscar proyectos" placeholderTextColor={foco.colors.subtle} returnKeyType="search" style={styles.searchInput} />
+          {query ? <Pressable accessibilityLabel="Limpiar búsqueda" onPress={() => setQuery('')} style={({ pressed }) => [styles.clear, pressed && pressedStyle]}><FocoIcon name="plus" size={17} color={foco.colors.muted} style={styles.closeIcon} /></Pressable> : null}
         </View>
-      </Surface>
 
-      <View style={styles.filters}>
-        {(['Todos', 'Activos', 'Archivados'] as Filter[]).map((item) => {
-          const selected = filter === item;
-          const count = item === 'Todos' ? state.projects.length : item === 'Activos' ? activeCount : archivedCount;
-          return (
-            <Pressable
-              key={item}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected }}
-              onPress={() => { setFilter(item); hapticSelection(); }}
-              style={({ pressed }) => [styles.filter, selected && styles.filterSelected, pressed && pressedStyle]}
-            >
-              <Text style={[styles.filterText, selected && styles.filterTextSelected]}>{item}  {count}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {active.length > 0 ? <Text style={styles.groupLabel}>ACTIVOS</Text> : null}
-      <View style={styles.list}>
-        {active.map((row) => <ProjectRow key={row.project.id} {...row} onPress={() => { setSelectedProject(row.project); hapticSelection(); }} />)}
-      </View>
-
-      {archived.length > 0 ? <Text style={[styles.groupLabel, styles.archiveLabel]}>ARCHIVADOS</Text> : null}
-      <View style={styles.list}>
-        {archived.map((row) => <ProjectRow key={row.project.id} {...row} onPress={() => { setSelectedProject(row.project); hapticSelection(); }} />)}
-      </View>
-
-      {visible.length === 0 ? (
-        <Surface style={styles.emptyState}>
-          <FocoIcon name="folder" size={30} color={foco.colors.text} />
-          <Text style={styles.emptyTitle}>{query ? 'Sin coincidencias' : filter === 'Archivados' ? 'Sin proyectos archivados' : 'Crea tu primer proyecto'}</Text>
-          <Text style={styles.emptyCopy}>{query ? 'Prueba otro nombre.' : filter === 'Archivados' ? 'Aquí aparecerán al cerrar una etapa.' : 'Agrupa tareas y sesiones en un solo lugar.'}</Text>
-          {!query && filter !== 'Archivados' ? <Pressable accessibilityRole="button" accessibilityLabel="Crear proyecto" onPress={openCreate} style={({ pressed }) => [styles.emptyButton, pressed && pressedStyle]}><Text style={styles.emptyButtonText}>Crear proyecto</Text></Pressable> : null}
-        </Surface>
-      ) : null}
-
-      <FocoSheet
-        visible={createOpen}
-        title="Nuevo proyecto"
-        subtitle="Nombre e icono. Nada más."
-        onClose={() => setCreateOpen(false)}
-        footer={<SheetButton label="Crear proyecto" onPress={saveProject} disabled={!projectName.trim() || duplicate} />}
-      >
-        <FieldLabel>NOMBRE</FieldLabel>
-        <TextInput autoFocus value={projectName} onChangeText={setProjectName} autoCapitalize="words" returnKeyType="done" placeholder="Ej. Universidad" placeholderTextColor={foco.colors.subtle} style={styles.sheetInput} accessibilityLabel="Nombre del proyecto" onSubmitEditing={saveProject} />
-        {duplicate ? <Text accessibilityLiveRegion="polite" style={styles.errorText}>Ese proyecto ya existe.</Text> : null}
-        <FieldLabel>ICONO</FieldLabel>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.iconChoices}>
-          {iconOptions.map((icon) => (
-            <Pressable key={icon} accessibilityRole="radio" accessibilityState={{ checked: projectIcon === icon }} accessibilityLabel={`Icono ${icon}`} onPress={() => { setProjectIcon(icon); hapticSelection(); }} style={({ pressed }) => [styles.iconChoice, projectIcon === icon && styles.iconChoiceSelected, pressed && pressedStyle]}>
-              <FocoIcon name={icon as IconName} size={25} color={projectIcon === icon ? foco.colors.bg : foco.colors.text} />
+        <View style={styles.filters}>
+          {(['Activos', 'Archivados'] as Filter[]).map((item) => (
+            <Pressable key={item} accessibilityRole="radio" accessibilityState={{ checked: filter === item }} onPress={() => { setFilter(item); hapticSelection(); }} style={({ pressed }) => [styles.filter, filter === item && styles.filterActive, pressed && pressedStyle]}>
+              <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text>
+              <Text style={[styles.filterCount, filter === item && styles.filterTextActive]}>{state.projects.filter((project) => item === 'Activos' ? !project.archived : project.archived).length}</Text>
             </Pressable>
           ))}
-        </ScrollView>
-      </FocoSheet>
+        </View>
 
-      <ProjectDetailSheet project={selectedProject} state={state} onClose={() => setSelectedProject(null)} onArchive={archiveSelected} />
-    </FocoScreen>
+        <SectionTitle title={filter} detail={`${visible.length} ${visible.length === 1 ? 'proyecto' : 'proyectos'}`} />
+        <View style={styles.list}>
+          {visible.map((project) => <ProjectRow key={project.id} project={project} onPress={() => router.push({ pathname: '/project/[id]', params: { id: project.id } })} />)}
+          {visible.length === 0 ? <View style={styles.empty}><FocoIcon name="folder" size={28} color={foco.colors.text} /><Text style={styles.emptyTitle}>{query ? 'Sin coincidencias' : `Sin proyectos ${filter.toLocaleLowerCase('es')}`}</Text><Text style={styles.emptyCopy}>{query ? 'Prueba con otro nombre.' : 'Usa + para crear uno nuevo.'}</Text></View> : null}
+        </View>
+      </FocoScreen>
+      <ProjectEditorSheet visible={editorOpen} onClose={() => setEditorOpen(false)} />
+    </>
   );
 }
 
-const ProjectRow = memo(function ProjectRow({ project, metrics, onPress }: ProjectRowModel & { onPress: () => void }) {
+function ProjectRow({ project, onPress }: { project: Project; onPress: () => void }) {
+  const { state } = useFocoStore();
+  const metrics = useMemo(() => getProjectMetrics(state, project.id), [project.id, state]);
+  const openTasks = metrics.taskCount - metrics.completedCount;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Abrir proyecto ${project.name}`} onPress={onPress} style={({ pressed }) => [styles.row, pressed && pressedStyle]}>
-      <View style={styles.iconTile}><FocoIcon name={project.icon as IconName} size={27} color={foco.colors.text} strokeWidth={1.75} /></View>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Abrir ${project.name}`} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+      <View style={styles.icon}><FocoIcon name={project.icon as IconName} size={23} color={foco.colors.text} /></View>
       <View style={styles.copy}>
-        <Text style={styles.name} numberOfLines={1}>{project.name}</Text>
-        <Text style={styles.meta} numberOfLines={1}>{metrics.taskCount} {metrics.taskCount === 1 ? 'tarea' : 'tareas'}  •  {formatDuration(metrics.focusSeconds, true)}</Text>
+        <View style={styles.titleLine}><Text style={styles.name} numberOfLines={1}>{project.name}</Text><Text style={styles.progress}>{Math.round(metrics.progress * 100)}%</Text></View>
+        <Text style={styles.meta}>{openTasks} pendientes · {metrics.completedPomodoros}/{metrics.plannedPomodoros} foco · {formatDuration(metrics.focusSeconds, true)}</Text>
+        <View style={styles.track}><View style={[styles.fill, { width: `${Math.round(metrics.progress * 100)}%` }]} /></View>
       </View>
-      {!project.archived ? (
-        <ProgressRing size={50} strokeWidth={2.5} progress={metrics.progress} color={foco.colors.text} trackColor="#3A3D44">
-          <Text style={styles.progressText}>{Math.round(metrics.progress * 100)}%</Text>
-        </ProgressRing>
-      ) : <Text style={styles.dash}>–</Text>}
       <FocoIcon name="chevron-right" size={17} color={foco.colors.subtle} />
     </Pressable>
-  );
-});
-
-function ProjectDetailSheet({ project, state, onClose, onArchive }: { project: Project | null; state: ReturnType<typeof useFocoStore>['state']; onClose: () => void; onArchive: () => void }) {
-  const metrics = project ? getProjectMetrics(state, project.id) : null;
-  return (
-    <FocoSheet
-      visible={Boolean(project)}
-      title={project?.name ?? 'Proyecto'}
-      subtitle={project?.archived ? 'Archivado · sigue disponible en estadísticas.' : 'Resumen local del proyecto.'}
-      onClose={onClose}
-      footer={<SheetButton label={project?.archived ? 'Restaurar proyecto' : 'Archivar proyecto'} variant={project?.archived ? 'primary' : 'danger'} onPress={onArchive} />}
-    >
-      {metrics ? (
-        <View style={styles.detailGrid}>
-          <View style={styles.detailMetric}><Text style={styles.detailValue}>{metrics.taskCount}</Text><Text style={styles.detailLabel}>Tareas</Text></View>
-          <View style={styles.detailMetric}><Text style={styles.detailValue}>{metrics.completedCount}</Text><Text style={styles.detailLabel}>Hechas</Text></View>
-          <View style={styles.detailMetric}><Text style={styles.detailValue} adjustsFontSizeToFit numberOfLines={1}>{formatDuration(metrics.focusSeconds, true)}</Text><Text style={styles.detailLabel}>Enfoque</Text></View>
-        </View>
-      ) : null}
-    </FocoSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  searchBox: { marginTop: 22, minHeight: 58, flexDirection: 'row', alignItems: 'center', paddingLeft: 16, paddingRight: 8, gap: 10 },
-  searchInput: { flex: 1, minWidth: 0, color: foco.colors.text, fontSize: 16.5, paddingVertical: 12 },
-  clearSlot: { width: 44, height: 48, alignItems: 'center', justifyContent: 'center' },
-  clearSearch: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  search: { minHeight: 54, marginTop: 16, borderRadius: 15, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, flexDirection: 'row', alignItems: 'center', paddingLeft: 14 },
+  searchInput: { flex: 1, color: foco.colors.text, fontSize: 14.5, paddingHorizontal: 11, paddingVertical: 13 },
+  clear: { width: 46, height: 52, alignItems: 'center', justifyContent: 'center' },
   closeIcon: { transform: [{ rotate: '45deg' }] },
-  filters: { marginTop: 18, flexDirection: 'row', gap: 8 },
-  filter: { flex: 1, minHeight: 48, borderRadius: 15, borderWidth: 1, borderColor: foco.colors.border, alignItems: 'center', justifyContent: 'center' },
-  filterSelected: { backgroundColor: foco.colors.text, borderColor: foco.colors.text },
-  filterText: { color: foco.colors.muted, fontSize: 13.8, fontWeight: '500' },
-  filterTextSelected: { color: foco.colors.bg, fontWeight: '600' },
-  groupLabel: { color: foco.colors.muted, fontSize: 12, letterSpacing: 0.7, marginTop: 23, marginBottom: 9 },
-  archiveLabel: { marginTop: 25 },
-  list: { gap: 7 },
-  row: { minHeight: 82, borderRadius: 15, borderWidth: 1, borderColor: foco.colors.borderSoft, backgroundColor: foco.colors.panel, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 11 },
-  iconTile: { width: 46, height: 46, borderRadius: 13, backgroundColor: foco.colors.panelStrong, alignItems: 'center', justifyContent: 'center' },
-  copy: { flex: 1, minWidth: 0 },
-  name: { color: foco.colors.text, fontSize: 16.5, fontWeight: '500' },
-  meta: { color: foco.colors.muted, fontSize: 12.8, marginTop: 5 },
-  progressText: { color: foco.colors.text, fontSize: 12, fontVariant: ['tabular-nums'] },
-  dash: { color: foco.colors.muted, fontSize: 18, width: 50, textAlign: 'center' },
-  emptyState: { marginTop: 24, minHeight: 176, padding: 20, alignItems: 'center', justifyContent: 'center' },
-  emptyTitle: { color: foco.colors.text, fontSize: 17, fontWeight: '600', marginTop: 12 },
-  emptyCopy: { color: foco.colors.muted, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 5 },
-  emptyButton: { minHeight: 48, borderRadius: 15, backgroundColor: foco.colors.text, paddingHorizontal: 17, alignItems: 'center', justifyContent: 'center', marginTop: 15 },
-  emptyButtonText: { color: foco.colors.bg, fontSize: 14, fontWeight: '600' },
-  sheetInput: { minHeight: 52, borderRadius: 15, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, color: foco.colors.text, paddingHorizontal: 14, fontSize: 15.5, marginBottom: 7 },
-  errorText: { color: '#E6A8B0', fontSize: 12, marginBottom: 16 },
-  iconChoices: { gap: 9, paddingBottom: 7 },
-  iconChoice: { width: 52, height: 52, borderRadius: 16, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, alignItems: 'center', justifyContent: 'center' },
-  iconChoiceSelected: { backgroundColor: foco.colors.text, borderColor: foco.colors.text },
-  detailGrid: { flexDirection: 'row', gap: 9, paddingBottom: 8 },
-  detailMetric: { flex: 1, minWidth: 0, minHeight: 94, borderRadius: 16, borderWidth: 1, borderColor: foco.colors.border, backgroundColor: foco.colors.panel, padding: 13, justifyContent: 'space-between' },
-  detailValue: { color: foco.colors.text, fontSize: 20, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  detailLabel: { color: foco.colors.muted, fontSize: 12 },
+  filters: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  filter: { flex: 1, minHeight: 45, borderRadius: 13, borderWidth: 1, borderColor: foco.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  filterActive: { backgroundColor: foco.colors.text, borderColor: foco.colors.text },
+  filterText: { color: foco.colors.muted, fontSize: 13.5, fontWeight: '600' },
+  filterCount: { color: foco.colors.subtle, fontSize: 12, fontVariant: ['tabular-nums'] },
+  filterTextActive: { color: foco.colors.bg },
+  list: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: foco.colors.borderSoft },
+  row: { minHeight: 82, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: foco.colors.borderSoft, paddingRight: 4 },
+  rowPressed: { opacity: 0.7 },
+  icon: { width: 42, height: 42, borderRadius: 13, backgroundColor: foco.colors.panelStrong, alignItems: 'center', justifyContent: 'center' },
+  copy: { flex: 1, minWidth: 0, paddingVertical: 11 },
+  titleLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  name: { flex: 1, color: foco.colors.text, fontSize: 16.5, fontWeight: '650' },
+  progress: { color: foco.colors.text, fontSize: 12.5, fontVariant: ['tabular-nums'] },
+  meta: { color: foco.colors.muted, fontSize: 11.5, marginTop: 5 },
+  track: { height: 3, borderRadius: 2, backgroundColor: '#272A30', marginTop: 8, overflow: 'hidden' },
+  fill: { height: 3, borderRadius: 2, backgroundColor: foco.colors.text },
+  empty: { minHeight: 190, alignItems: 'center', justifyContent: 'center' },
+  emptyTitle: { color: foco.colors.text, fontSize: 16, fontWeight: '650', marginTop: 12 },
+  emptyCopy: { color: foco.colors.muted, fontSize: 12.5, marginTop: 5 },
 });
