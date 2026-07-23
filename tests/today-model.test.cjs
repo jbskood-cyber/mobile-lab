@@ -6,7 +6,7 @@ const {
   createInitialTasks,
   getTodayMetrics,
   toggleTask,
-} = require('../.test-dist/src/features/today/model.js');
+} = require('../.test-dist/model.js');
 
 test('initial tasks expose the expected daily metrics', () => {
   const tasks = createInitialTasks();
