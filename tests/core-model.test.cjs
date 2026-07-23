@@ -1,8 +1,8 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const model = require('../.core-test-dist/model.js');
-const timer = require('../.core-test-dist/focusTimer.js');
+const model = require('../.core-test-dist/core/model.js');
+const timer = require('../.core-test-dist/core/focusTimer.js');
 
 const NOW = new Date('2026-07-23T12:00:00Z').getTime();
 
