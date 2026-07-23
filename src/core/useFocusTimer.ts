@@ -41,7 +41,7 @@ function normalizeRuntime(value: unknown): FocusRuntime {
 }
 
 export function useFocusTimer(projectId: string) {
-  const { addSession } = useFocoStore();
+  const { addSession, resetToken } = useFocoStore();
   const { setFocusImmersive } = useFocoUI();
   const [runtime, setRuntime] = useState<FocusRuntime>(createFocusRuntime);
   const [now, setNow] = useState(Date.now());
@@ -71,6 +71,16 @@ export function useFocusTimer(projectId: string) {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!ready || resetToken === 0) return;
+    const reset = createFocusRuntime();
+    lastCompletedAnchor.current = null;
+    setRuntime(reset);
+    setNow(Date.now());
+    setMessage('Datos locales reiniciados.');
+    void Storage.setItem(TIMER_KEY, JSON.stringify(reset)).catch(() => undefined);
+  }, [ready, resetToken]);
 
   useEffect(() => {
     setFocusImmersive(runtime.running);
