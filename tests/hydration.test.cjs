@@ -1,8 +1,8 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { createInitialState } = require('../.core-test-dist/model.js');
-const { resolveHydratedState } = require('../.core-test-dist/hydration.js');
+const { createInitialState } = require('../.core-test-dist/core/model.js');
+const { resolveHydratedState } = require('../.core-test-dist/core/hydration.js');
 
 const NOW = new Date('2026-07-23T12:00:00Z').getTime();
 
