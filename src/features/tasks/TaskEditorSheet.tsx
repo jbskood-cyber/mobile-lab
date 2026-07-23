@@ -19,14 +19,7 @@ const recurrenceOptions: Array<{ value: RecurrenceKind; label: string }> = [
   { value: 'monthly', label: 'Mensual' },
 ];
 
-export function TaskEditorSheet({
-  visible,
-  task,
-  defaultProjectId,
-  defaultDueAt,
-  onClose,
-  onSaved,
-}: {
+export function TaskEditorSheet({ visible, task, defaultProjectId, defaultDueAt, onClose, onSaved }: {
   visible: boolean;
   task?: Task;
   defaultProjectId?: string;
@@ -34,7 +27,7 @@ export function TaskEditorSheet({
   onClose: () => void;
   onSaved?: (task: Task) => void;
 }) {
-  const { state, createTask, updateTaskDetails, setTaskNotificationId } = useFocoStore();
+  const { state, createTask, updateTaskDetails } = useFocoStore();
   const projects = useMemo(() => state.projects.filter((project) => !project.archived), [state.projects]);
   const [title, setTitle] = useState('');
   const [projectId, setProjectId] = useState(defaultProjectId ?? projects[0]?.id ?? 'personal');
@@ -49,7 +42,6 @@ export function TaskEditorSheet({
 
   useEffect(() => {
     if (!visible) return;
-    const now = Date.now();
     setTitle(task?.title ?? '');
     setProjectId(task?.projectId ?? defaultProjectId ?? projects[0]?.id ?? 'personal');
     setPriority(task?.priority ?? 'Media');
@@ -62,7 +54,6 @@ export function TaskEditorSheet({
     setSubtaskDraft('');
     if (!task && defaultDueAt === undefined) setDueAt(undefined);
     if (!task) setReminderAt(undefined);
-    void now;
   }, [defaultDueAt, defaultProjectId, projects, task, visible]);
 
   const addDraftSubtask = () => {
@@ -76,54 +67,23 @@ export function TaskEditorSheet({
 
   const save = () => {
     if (!title.trim()) return;
-    const payload = {
-      title,
-      projectId,
-      priority,
-      dueAt,
-      reminderAt,
-      recurrence: { kind: recurrence, interval: 1 },
-      estimatedPomodoros,
-      notes,
-      subtasks,
-    };
-    const saved = task
-      ? updateTaskDetails(task.id, payload)
-      : createTask(payload);
+    const payload = { title, projectId, priority, dueAt, reminderAt, recurrence: { kind: recurrence, interval: 1 }, estimatedPomodoros, notes, subtasks };
+    const saved = task ? updateTaskDetails(task.id, payload) : createTask(payload);
     if (!saved) return;
-    void syncTaskReminder(task, saved).then((notificationId) => {
-      setTaskNotificationId(saved.id, notificationId);
-    });
+    void syncTaskReminder(task, saved);
     hapticSuccess();
     onSaved?.(saved);
     onClose();
   };
 
   return (
-    <FocoSheet
-      visible={visible}
-      title={task ? 'Editar tarea' : 'Nueva tarea'}
-      subtitle="Planifica solo lo necesario; podrás cambiarlo después."
-      onClose={onClose}
-      footer={<><SheetButton label="Cancelar" variant="secondary" onPress={onClose} /><SheetButton label={task ? 'Guardar' : 'Crear'} onPress={save} disabled={!title.trim()} /></>}
-    >
+    <FocoSheet visible={visible} title={task ? 'Editar tarea' : 'Nueva tarea'} subtitle="Planifica solo lo necesario; podrás cambiarlo después." onClose={onClose} footer={<><SheetButton label="Cancelar" variant="secondary" onPress={onClose} /><SheetButton label={task ? 'Guardar' : 'Crear'} onPress={save} disabled={!title.trim()} /></>}>
       <FieldLabel>TÍTULO</FieldLabel>
-      <TextInput
-        autoFocus={!task}
-        value={title}
-        onChangeText={setTitle}
-        placeholder="¿Qué necesitas hacer?"
-        placeholderTextColor={foco.colors.subtle}
-        autoCapitalize="sentences"
-        returnKeyType="next"
-        style={styles.input}
-      />
+      <TextInput autoFocus={!task} value={title} onChangeText={setTitle} placeholder="¿Qué necesitas hacer?" placeholderTextColor={foco.colors.subtle} autoCapitalize="sentences" returnKeyType="next" style={styles.input} />
 
       <FieldLabel>PROYECTO</FieldLabel>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        {projects.map((project) => (
-          <ChoiceChip key={project.id} label={project.name} selected={projectId === project.id} onPress={() => setProjectId(project.id)} />
-        ))}
+        {projects.map((project) => <ChoiceChip key={project.id} label={project.name} selected={projectId === project.id} onPress={() => setProjectId(project.id)} />)}
       </ScrollView>
 
       <FieldLabel>FECHA Y HORA</FieldLabel>
@@ -134,15 +94,11 @@ export function TaskEditorSheet({
 
       <FieldLabel>REPETICIÓN</FieldLabel>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        {recurrenceOptions.map((option) => (
-          <ChoiceChip key={option.value} label={option.label} selected={recurrence === option.value} onPress={() => setRecurrence(option.value)} />
-        ))}
+        {recurrenceOptions.map((option) => <ChoiceChip key={option.value} label={option.label} selected={recurrence === option.value} onPress={() => setRecurrence(option.value)} />)}
       </ScrollView>
 
       <FieldLabel>PRIORIDAD</FieldLabel>
-      <View style={styles.equalRow}>
-        {priorities.map((item) => <ChoiceChip key={item} label={item} selected={priority === item} onPress={() => setPriority(item)} flex />)}
-      </View>
+      <View style={styles.equalRow}>{priorities.map((item) => <ChoiceChip key={item} label={item} selected={priority === item} onPress={() => setPriority(item)} flex />)}</View>
 
       <FieldLabel>POMODOROS ESTIMADOS</FieldLabel>
       <View style={styles.stepper}>
@@ -169,25 +125,13 @@ export function TaskEditorSheet({
       </View>
 
       <FieldLabel>NOTAS</FieldLabel>
-      <TextInput
-        value={notes}
-        onChangeText={setNotes}
-        placeholder="Contexto, enlaces o detalles"
-        placeholderTextColor={foco.colors.subtle}
-        multiline
-        textAlignVertical="top"
-        style={[styles.input, styles.notes]}
-      />
+      <TextInput value={notes} onChangeText={setNotes} placeholder="Contexto, enlaces o detalles" placeholderTextColor={foco.colors.subtle} multiline textAlignVertical="top" style={[styles.input, styles.notes]} />
     </FocoSheet>
   );
 }
 
 function ChoiceChip({ label, selected, onPress, flex = false }: { label: string; selected: boolean; onPress: () => void; flex?: boolean }) {
-  return (
-    <Pressable accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={() => { onPress(); hapticSelection(); }} style={({ pressed }) => [styles.chip, flex && styles.chipFlex, selected && styles.chipSelected, pressed && pressedStyle]}>
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
-    </Pressable>
-  );
+  return <Pressable accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={() => { onPress(); hapticSelection(); }} style={({ pressed }) => [styles.chip, flex && styles.chipFlex, selected && styles.chipSelected, pressed && pressedStyle]}><Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text></Pressable>;
 }
 
 const styles = StyleSheet.create({
