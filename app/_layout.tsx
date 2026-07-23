@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
@@ -17,6 +17,13 @@ function hideSplash() {
   void SplashScreen.hideAsync().catch(() => undefined);
 }
 
+function HydrationFallback() {
+  const segments = useSegments();
+  const destination = segments.at(-1);
+  const screen = destination === 'projects' ? 'projects' : destination === 'focus' ? 'focus' : destination === 'stats' ? 'stats' : 'today';
+  return <FocoSkeleton screen={screen} />;
+}
+
 function FocoSystemChrome() {
   const { focusImmersive } = useFocoUI();
   return (
@@ -29,7 +36,7 @@ function FocoSystemChrome() {
 
 export default function RootLayout() {
   return (
-    <FocoStoreProvider fallback={<FocoSkeleton screen="today" />} onReady={hideSplash}>
+    <FocoStoreProvider fallback={<HydrationFallback />} onReady={hideSplash}>
       <FocoUIProvider>
         <View style={styles.root}>
           <FocoSystemChrome />
