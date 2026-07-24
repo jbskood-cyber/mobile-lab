@@ -41,6 +41,18 @@ function normalizePackageName(value: string | undefined) {
   return value?.trim().toLowerCase() ?? '';
 }
 
+function normalizeRule(rule: DistractorAppRule): DistractorAppRule | null {
+  const packageName = normalizePackageName(rule.packageName);
+  if (!packageName) return null;
+
+  return {
+    packageName,
+    label: rule.label.trim() || packageName,
+    enabled: rule.enabled,
+    createdAt: rule.createdAt,
+  };
+}
+
 function findEnabledRule(rules: DistractorAppRule[], packageName: string) {
   return rules.find((rule) => rule.enabled && normalizePackageName(rule.packageName) === packageName);
 }
@@ -104,4 +116,43 @@ export function recordDistractionDetection(
     count: metrics.count + 1,
     detections: bounded,
   };
+}
+
+export function upsertDistractorRule(
+  rules: DistractorAppRule[],
+  incoming: DistractorAppRule,
+): DistractorAppRule[] {
+  const normalized = normalizeRule(incoming);
+  if (!normalized) return rules;
+
+  const existingIndex = rules.findIndex(
+    (rule) => normalizePackageName(rule.packageName) === normalized.packageName,
+  );
+  if (existingIndex < 0) return [...rules, normalized];
+
+  return rules.map((rule, index) => index === existingIndex
+    ? { ...normalized, createdAt: rule.createdAt }
+    : rule);
+}
+
+export function setDistractorRuleEnabled(
+  rules: DistractorAppRule[],
+  packageName: string,
+  enabled: boolean,
+): DistractorAppRule[] {
+  const target = normalizePackageName(packageName);
+  if (!target) return rules;
+
+  return rules.map((rule) => normalizePackageName(rule.packageName) === target
+    ? { ...rule, enabled }
+    : rule);
+}
+
+export function removeDistractorRule(
+  rules: DistractorAppRule[],
+  packageName: string,
+): DistractorAppRule[] {
+  const target = normalizePackageName(packageName);
+  if (!target) return rules;
+  return rules.filter((rule) => normalizePackageName(rule.packageName) !== target);
 }
