@@ -23,7 +23,7 @@ export type PeriodStats = {
   series: PeriodSeriesPoint[];
 };
 
-export type HourlyProductivityPoint = {
+export type HourlyProductivity = {
   hour: number;
   focusSeconds: number;
   sessionCount: number;
@@ -118,10 +118,10 @@ export function getPeriodStats(state: FocoState, period: AnalyticsPeriod, anchor
   return summarize(state, period, anchor, true);
 }
 
-export function getHourlyProductivity(state: FocoState, days = 28, anchor = Date.now()): HourlyProductivityPoint[] {
+export function getHourlyProductivity(state: FocoState, days = 28, anchor = Date.now()): HourlyProductivity[] {
   const end = endOfLocalDay(anchor);
   const start = end - Math.max(1, Math.round(days)) * DAY;
-  const values = Array.from({ length: 24 }, (_, hour): HourlyProductivityPoint => ({ hour, focusSeconds: 0, sessionCount: 0 }));
+  const values = Array.from({ length: 24 }, (_, hour): HourlyProductivity => ({ hour, focusSeconds: 0, sessionCount: 0 }));
 
   for (const session of state.sessions) {
     if (session.phase !== 'focus' || session.startedAt < start || session.startedAt >= end || session.durationSec <= 0) continue;
