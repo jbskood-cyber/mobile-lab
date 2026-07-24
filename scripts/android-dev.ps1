@@ -16,8 +16,14 @@ if ($trackedChanges) {
 
 $env:NODE_USE_SYSTEM_CA = '1'
 
-Write-Step 'Instalando dependencias sin generar package-lock.json'
-npm.cmd install --no-audit --no-fund --package-lock=false
+if (Test-Path (Join-Path $repoRoot 'package-lock.json')) {
+  Write-Step 'Instalando dependencias desde package-lock.json'
+  npm.cmd ci --no-audit --no-fund
+} else {
+  Write-Step 'Generando package-lock.json reproducible'
+  npm.cmd install --package-lock-only --ignore-scripts --no-audit --no-fund
+  npm.cmd ci --no-audit --no-fund
+}
 
 $adb = Get-Command adb -ErrorAction SilentlyContinue
 $androidHome = $env:ANDROID_HOME
