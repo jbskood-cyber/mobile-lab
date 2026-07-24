@@ -28,7 +28,14 @@ export type DistractionObservationResult = {
   reason?: 'inactive-focus' | 'missing-package' | 'no-match' | 'debounced';
 };
 
+export type DistractionMetrics = {
+  focusSessionId: string;
+  count: number;
+  detections: DistractionDetection[];
+};
+
 const DEFAULT_DEBOUNCE_MS = 10_000;
+const DEFAULT_HISTORY_LIMIT = 50;
 
 function normalizePackageName(value: string | undefined) {
   return value?.trim().toLowerCase() ?? '';
@@ -75,4 +82,26 @@ export function evaluateDistractionObservation(input: DistractionObservationInpu
   };
 
   return { distracting: true, matchedRule, detection };
+}
+
+export function createDistractionMetrics(focusSessionId: string): DistractionMetrics {
+  return { focusSessionId, count: 0, detections: [] };
+}
+
+export function recordDistractionDetection(
+  metrics: DistractionMetrics,
+  detection: DistractionDetection,
+  historyLimit = DEFAULT_HISTORY_LIMIT,
+): DistractionMetrics {
+  if (detection.focusSessionId !== metrics.focusSessionId) return metrics;
+
+  const limit = Math.max(0, Math.floor(historyLimit));
+  const detections = [...metrics.detections, detection];
+  const bounded = limit === 0 ? [] : detections.slice(-limit);
+
+  return {
+    focusSessionId: metrics.focusSessionId,
+    count: metrics.count + 1,
+    detections: bounded,
+  };
 }
