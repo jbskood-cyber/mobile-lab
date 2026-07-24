@@ -9,7 +9,7 @@ test('builds one-off local reminder descriptor from task data', () => {
   const request = buildReminderRequest({
     id: 't1', title: 'Preparar entrega', notes: 'Adjuntar reporte', reminderAt: DUE - 30 * 60 * 1000,
     dueAt: DUE, recurrence: { kind: 'none', interval: 1 },
-  });
+  }, DUE - 60 * 60 * 1000);
 
   assert.equal(request.taskId, 't1');
   assert.equal(request.title, 'Preparar entrega');
