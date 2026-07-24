@@ -7,7 +7,7 @@ const { migrateState } = require('../.core-test-dist/core/migration.js');
 const NOW = new Date('2026-07-23T15:00:00Z').getTime();
 const DAY = 24 * 60 * 60 * 1000;
 
-test('migrates v1 state to v2 without losing projects, tasks or sessions', () => {
+test('migrates v1 state to v3 without losing projects, tasks or sessions', () => {
   const legacy = {
     version: 1,
     projects: [{ id: 'p1', name: 'Universidad', icon: 'book', archived: false, createdAt: NOW - DAY }],
@@ -17,13 +17,16 @@ test('migrates v1 state to v2 without losing projects, tasks or sessions', () =>
 
   const migrated = migrateState(legacy, NOW);
 
-  assert.equal(migrated.version, 2);
+  assert.equal(migrated.version, 3);
   assert.equal(migrated.projects[0].name, 'Universidad');
   assert.equal(migrated.tasks[0].title, 'Estudiar');
   assert.equal(migrated.tasks[0].estimatedPomodoros, 1);
+  assert.equal(migrated.tasks[0].durationMinutes, 30);
   assert.deepEqual(migrated.tasks[0].subtasks, []);
   assert.equal(migrated.sessions[0].plannedSec, 1500);
   assert.equal(migrated.preferences.focusMinutes, 50);
+  assert.equal(migrated.planning.workdayStartHour, 7);
+  assert.equal(migrated.appearance, 'system');
 });
 
 test('creates rich tasks with schedule, notes, recurrence, estimates and subtasks', () => {

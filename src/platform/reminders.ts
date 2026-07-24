@@ -2,7 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import type { Task } from '@/src/core/model';
-import { buildReminderRequest } from './reminderModel';
+import { buildReminderRequest, type ReminderRequest } from './reminderModel';
 
 const TASK_CHANNEL = 'foco-tasks';
 const TIMER_CHANNEL = 'foco-timer';
@@ -49,9 +49,7 @@ async function cancelTaskReminders(taskId: string) {
   }
 }
 
-export async function scheduleTaskReminder(task: Task) {
-  const request = buildReminderRequest(task);
-  if (!request || !(await ensureNotificationPermission())) return undefined;
+async function scheduleReminderRequest(request: ReminderRequest) {
   try {
     return await Notifications.scheduleNotificationAsync({
       content: { title: request.title, body: request.body, data: { type: 'task', taskId: request.taskId }, sound: true },
@@ -60,6 +58,29 @@ export async function scheduleTaskReminder(task: Task) {
   } catch {
     return undefined;
   }
+}
+
+export async function scheduleTaskReminder(task: Task) {
+  const request = buildReminderRequest(task);
+  if (!request || !(await ensureNotificationPermission())) return undefined;
+  return scheduleReminderRequest(request);
+}
+
+export async function reconcileAllTaskReminders(tasks: Task[]) {
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const taskNotifications = scheduled.filter((item) => item.content.data?.type === 'task');
+    await Promise.all(taskNotifications.map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)));
+  } catch {
+    // Do not schedule duplicates when the existing queue cannot be inspected.
+    return [];
+  }
+
+  const requests = tasks.map((task) => buildReminderRequest(task)).filter((request): request is ReminderRequest => request !== null);
+  if (requests.length === 0 || !(await ensureNotificationPermission())) return [];
+
+  const identifiers = await Promise.all(requests.map(scheduleReminderRequest));
+  return identifiers.filter((identifier): identifier is string => typeof identifier === 'string');
 }
 
 export async function syncTaskReminder(previous: Task | undefined, next: Task | undefined) {
