@@ -25,6 +25,8 @@
       [
         "expo-splash-screen",
         {
+          "image": "./assets/foco-splash.png",
+          "imageWidth": 160,
           "backgroundColor": "#F6F7F9",
           "dark": {
             "backgroundColor": "#08090B"
