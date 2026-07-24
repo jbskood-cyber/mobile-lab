@@ -23,6 +23,12 @@ export type PeriodStats = {
   series: PeriodSeriesPoint[];
 };
 
+export type HourlyProductivityPoint = {
+  hour: number;
+  focusSeconds: number;
+  sessionCount: number;
+};
+
 const DAY = 24 * 60 * 60 * 1000;
 
 export function getPeriodBounds(period: AnalyticsPeriod, anchor = Date.now()) {
@@ -60,13 +66,21 @@ function tasksCompletedInRange(state: FocoState, start: number, end: number) {
   return state.tasks.filter((task) => task.completedAt !== undefined && task.completedAt >= start && task.completedAt < end);
 }
 
+function tasksPlannedInRange(state: FocoState, start: number, end: number) {
+  return state.tasks.filter((task) => {
+    const plannedAt = task.plannedStartAt ?? task.dueAt;
+    return plannedAt !== undefined && plannedAt >= start && plannedAt < end;
+  });
+}
+
 function summarize(state: FocoState, period: AnalyticsPeriod, anchor: number, includeComparison: boolean): PeriodStats {
   const bounds = getPeriodBounds(period, anchor);
   const sessions = sessionsInRange(state, bounds.start, bounds.end);
   const completedTasks = tasksCompletedInRange(state, bounds.start, bounds.end);
+  const plannedTasks = tasksPlannedInRange(state, bounds.start, bounds.end);
   const totalFocusSec = sessions.reduce((sum, session) => sum + session.durationSec, 0);
   const completedPomodoros = sessions.filter((session) => session.mode === 'pomodoro' && session.completed).length;
-  const plannedPomodoros = completedTasks.reduce((sum, task) => sum + task.estimatedPomodoros, 0);
+  const plannedPomodoros = plannedTasks.reduce((sum, task) => sum + task.estimatedPomodoros, 0);
   const series = Array.from({ length: bounds.unitCount }, (_, index): PeriodSeriesPoint => {
     const start = bounds.start + index * bounds.unitMs;
     const end = Math.min(bounds.end, start + bounds.unitMs);
@@ -102,6 +116,22 @@ function summarize(state: FocoState, period: AnalyticsPeriod, anchor: number, in
 
 export function getPeriodStats(state: FocoState, period: AnalyticsPeriod, anchor = Date.now()) {
   return summarize(state, period, anchor, true);
+}
+
+export function getHourlyProductivity(state: FocoState, days = 28, anchor = Date.now()): HourlyProductivityPoint[] {
+  const end = endOfLocalDay(anchor);
+  const start = end - Math.max(1, Math.round(days)) * DAY;
+  const values = Array.from({ length: 24 }, (_, hour): HourlyProductivityPoint => ({ hour, focusSeconds: 0, sessionCount: 0 }));
+
+  for (const session of state.sessions) {
+    if (session.phase !== 'focus' || session.startedAt < start || session.startedAt >= end || session.durationSec <= 0) continue;
+    const point = values[new Date(session.startedAt).getHours()];
+    if (!point) continue;
+    point.focusSeconds += session.durationSec;
+    point.sessionCount += 1;
+  }
+
+  return values;
 }
 
 export function getStreak(state: FocoState, anchor = Date.now()) {
