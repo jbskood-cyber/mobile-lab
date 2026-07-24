@@ -4,6 +4,7 @@ type ReminderTask = {
   notes?: string;
   reminderAt?: number;
   dueAt?: number;
+  completed?: boolean;
 };
 
 export type ReminderRequest = {
@@ -24,7 +25,7 @@ function relativeDueLabel(reminderAt: number, dueAt?: number) {
 }
 
 export function buildReminderRequest(task: ReminderTask, now = Date.now()): ReminderRequest | null {
-  if (task.reminderAt === undefined || !Number.isFinite(task.reminderAt) || task.reminderAt <= now) return null;
+  if (task.completed || task.reminderAt === undefined || !Number.isFinite(task.reminderAt) || task.reminderAt <= now) return null;
   return {
     taskId: task.id,
     title: task.title.trim() || 'Tarea pendiente',
