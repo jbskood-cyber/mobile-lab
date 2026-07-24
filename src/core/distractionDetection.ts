@@ -34,6 +34,11 @@ export type DistractionMetrics = {
   detections: DistractionDetection[];
 };
 
+export type DistractionState = {
+  rules: DistractorAppRule[];
+  metrics: DistractionMetrics[];
+};
+
 const DEFAULT_DEBOUNCE_MS = 10_000;
 const DEFAULT_HISTORY_LIMIT = 50;
 
@@ -155,4 +160,78 @@ export function removeDistractorRule(
   const target = normalizePackageName(packageName);
   if (!target) return rules;
   return rules.filter((rule) => normalizePackageName(rule.packageName) !== target);
+}
+
+export function createDistractionState(): DistractionState {
+  return { rules: [], metrics: [] };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hydrateRule(value: unknown): DistractorAppRule | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.packageName !== 'string' || typeof value.label !== 'string') return null;
+  if (typeof value.enabled !== 'boolean' || typeof value.createdAt !== 'string') return null;
+  return normalizeRule({
+    packageName: value.packageName,
+    label: value.label,
+    enabled: value.enabled,
+    createdAt: value.createdAt,
+  });
+}
+
+function hydrateDetection(value: unknown): DistractionDetection | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.packageName !== 'string' || typeof value.detectedAt !== 'string') return null;
+  if (value.focusSessionId !== undefined && typeof value.focusSessionId !== 'string') return null;
+
+  const packageName = normalizePackageName(value.packageName);
+  if (!packageName || !Number.isFinite(Date.parse(value.detectedAt))) return null;
+
+  return {
+    packageName,
+    detectedAt: value.detectedAt,
+    ...(typeof value.focusSessionId === 'string' && value.focusSessionId
+      ? { focusSessionId: value.focusSessionId }
+      : {}),
+  };
+}
+
+function hydrateMetrics(value: unknown): DistractionMetrics | null {
+  if (!isRecord(value) || typeof value.focusSessionId !== 'string' || !value.focusSessionId) return null;
+  if (!Number.isFinite(value.count) || typeof value.count !== 'number' || value.count < 0) return null;
+  if (!Array.isArray(value.detections)) return null;
+
+  return {
+    focusSessionId: value.focusSessionId,
+    count: Math.floor(value.count),
+    detections: value.detections.map(hydrateDetection).filter((item): item is DistractionDetection => Boolean(item)),
+  };
+}
+
+export function hydrateDistractionState(raw: string | null | undefined): DistractionState {
+  if (!raw) return createDistractionState();
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed) || !Array.isArray(parsed.rules) || !Array.isArray(parsed.metrics)) {
+      return createDistractionState();
+    }
+
+    return {
+      rules: parsed.rules.map(hydrateRule).filter((item): item is DistractorAppRule => Boolean(item)),
+      metrics: parsed.metrics.map(hydrateMetrics).filter((item): item is DistractionMetrics => Boolean(item)),
+    };
+  } catch {
+    return createDistractionState();
+  }
+}
+
+export function serializeDistractionState(state: DistractionState): string {
+  return JSON.stringify({
+    rules: state.rules,
+    metrics: state.metrics,
+  });
 }

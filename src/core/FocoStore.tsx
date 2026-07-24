@@ -3,6 +3,19 @@ import { createContext, type PropsWithChildren, type ReactNode, useCallback, use
 
 import { createDemoState } from './demoState';
 import {
+  createDistractionMetrics,
+  createDistractionState,
+  hydrateDistractionState,
+  recordDistractionDetection,
+  removeDistractorRule as removeDistractorRuleFromState,
+  serializeDistractionState,
+  setDistractorRuleEnabled as setDistractorRuleEnabledInState,
+  upsertDistractorRule as upsertDistractorRuleInState,
+  type DistractionDetection,
+  type DistractionState,
+  type DistractorAppRule,
+} from './distractionDetection';
+import {
   addProject as addProjectToState,
   addRoutine as addRoutineToState,
   addSession as addSessionToState,
@@ -53,9 +66,11 @@ const V2_STORAGE_KEY = 'foco:state:v2';
 const LEGACY_STORAGE_KEY = 'foco:state:v1';
 const TIMER_KEY = 'foco:timer:v2';
 const LEGACY_TIMER_KEY = 'foco:timer:v1';
+const DISTRACTION_STORAGE_KEY = 'foco:distraction:v1';
 
 type StoreValue = {
   state: FocoState;
+  distractionState: DistractionState;
   ready: true;
   storageError: string | null;
   resetToken: number;
@@ -86,6 +101,10 @@ type StoreValue = {
   updatePreferences: (patch: Partial<FocusPreferences>) => void;
   updatePlanning: (patch: Partial<PlanningPreferences>) => void;
   updateAppearance: (appearance: AppearancePreference) => void;
+  upsertDistractorRule: (rule: DistractorAppRule) => void;
+  setDistractorRuleEnabled: (packageName: string, enabled: boolean) => void;
+  removeDistractorRule: (packageName: string) => void;
+  recordDistraction: (detection: DistractionDetection) => void;
   replaceState: (next: FocoState) => void;
   loadDemoData: () => void;
   startEmpty: () => void;
@@ -97,6 +116,7 @@ const FocoStoreContext = createContext<StoreValue | null>(null);
 
 export function FocoStoreProvider({ children, fallback = null, onReady }: ProviderProps) {
   const [state, setState] = useState<FocoState | null>(null);
+  const [distractionState, setDistractionState] = useState<DistractionState>(() => createDistractionState());
   const [ready, setReady] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [resetToken, setResetToken] = useState(0);
@@ -105,12 +125,19 @@ export function FocoStoreProvider({ children, fallback = null, onReady }: Provid
     let active = true;
     void (async () => {
       try {
-        const stored = await Storage.getItem(STORAGE_KEY) ?? await Storage.getItem(V2_STORAGE_KEY) ?? await Storage.getItem(LEGACY_STORAGE_KEY);
-        if (active) setState(resolveHydratedState(stored));
+        const [stored, storedDistraction] = await Promise.all([
+          Storage.getItem(STORAGE_KEY).then((current) => current ?? Storage.getItem(V2_STORAGE_KEY)).then((current) => current ?? Storage.getItem(LEGACY_STORAGE_KEY)),
+          Storage.getItem(DISTRACTION_STORAGE_KEY),
+        ]);
+        if (active) {
+          setState(resolveHydratedState(stored));
+          setDistractionState(hydrateDistractionState(storedDistraction));
+        }
       } catch {
         if (active) {
           setStorageError('No pudimos leer tus datos locales. FOCO seguirá disponible durante esta sesión.');
           setState(createDemoState());
+          setDistractionState(createDistractionState());
         }
       } finally {
         if (active) setReady(true);
@@ -131,6 +158,17 @@ export function FocoStoreProvider({ children, fallback = null, onReady }: Provid
     }, 100);
     return () => clearTimeout(timeout);
   }, [ready, state]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const timeout = setTimeout(() => {
+      void Storage.setItem(DISTRACTION_STORAGE_KEY, serializeDistractionState(distractionState)).then(
+        () => setStorageError(null),
+        () => setStorageError('Las reglas de distracción están activas, pero todavía no pudieron guardarse en el dispositivo.'),
+      );
+    }, 100);
+    return () => clearTimeout(timeout);
+  }, [distractionState, ready]);
 
   const createTask = useCallback((draft: TaskDraft) => {
     if (!state) return null;
@@ -261,10 +299,47 @@ export function FocoStoreProvider({ children, fallback = null, onReady }: Provid
   const updatePreferences = useCallback((patch: Partial<FocusPreferences>) => setState((current) => current ? updatePreferencesInState(current, patch) : current), []);
   const updatePlanning = useCallback((patch: Partial<PlanningPreferences>) => setState((current) => current ? updatePlanningInState(current, patch) : current), []);
   const updateAppearance = useCallback((appearance: AppearancePreference) => setState((current) => current ? updateAppearanceInState(current, appearance) : current), []);
+
+  const upsertDistractorRule = useCallback((rule: DistractorAppRule) => {
+    setDistractionState((current) => ({
+      ...current,
+      rules: upsertDistractorRuleInState(current.rules, rule),
+    }));
+  }, []);
+
+  const setDistractorRuleEnabled = useCallback((packageName: string, enabled: boolean) => {
+    setDistractionState((current) => ({
+      ...current,
+      rules: setDistractorRuleEnabledInState(current.rules, packageName, enabled),
+    }));
+  }, []);
+
+  const removeDistractorRule = useCallback((packageName: string) => {
+    setDistractionState((current) => ({
+      ...current,
+      rules: removeDistractorRuleFromState(current.rules, packageName),
+    }));
+  }, []);
+
+  const recordDistraction = useCallback((detection: DistractionDetection) => {
+    if (!detection.focusSessionId) return;
+    setDistractionState((current) => {
+      const focusSessionId = detection.focusSessionId as string;
+      const existing = current.metrics.find((item) => item.focusSessionId === focusSessionId)
+        ?? createDistractionMetrics(focusSessionId);
+      const updated = recordDistractionDetection(existing, detection);
+      return {
+        ...current,
+        metrics: [updated, ...current.metrics.filter((item) => item.focusSessionId !== focusSessionId)],
+      };
+    });
+  }, []);
+
   const replaceState = useCallback((next: FocoState) => { setState(next); setResetToken((value) => value + 1); }, []);
 
   const resetWith = useCallback((next: FocoState) => {
     setState(next);
+    setDistractionState(createDistractionState());
     setResetToken((value) => value + 1);
     setStorageError(null);
     void Promise.all([
@@ -273,6 +348,7 @@ export function FocoStoreProvider({ children, fallback = null, onReady }: Provid
       Storage.removeItem(LEGACY_STORAGE_KEY),
       Storage.removeItem(TIMER_KEY),
       Storage.removeItem(LEGACY_TIMER_KEY),
+      Storage.removeItem(DISTRACTION_STORAGE_KEY),
     ]).catch(() => setStorageError('FOCO cambió en esta sesión, pero no pudo confirmar todos los cambios locales.'));
   }, []);
   const loadDemoData = useCallback(() => resetWith(createDemoState()), [resetWith]);
@@ -280,17 +356,21 @@ export function FocoStoreProvider({ children, fallback = null, onReady }: Provid
   const resetLocalData = startEmpty;
 
   const value = useMemo<StoreValue | null>(() => state && ready ? ({
-    state, ready: true, storageError, resetToken,
+    state, distractionState, ready: true, storageError, resetToken,
     createTask, updateTaskDetails, completeTask, reopenTask, duplicateTask, postponeTask, moveTaskToInbox, scheduleTask,
     addSubtask, toggleSubtask, deleteSubtask, addTask, updateTask, toggleTask, deleteTask, restoreTask,
     addProject, updateProject, toggleProjectArchived,
     addRoutine, updateRoutine, toggleRoutinePaused, generateRoutineTask,
-    addSession, updatePreferences, updatePlanning, updateAppearance, replaceState, loadDemoData, startEmpty, resetLocalData,
+    addSession, updatePreferences, updatePlanning, updateAppearance,
+    upsertDistractorRule, setDistractorRuleEnabled, removeDistractorRule, recordDistraction,
+    replaceState, loadDemoData, startEmpty, resetLocalData,
   }) : null, [
-    state, ready, storageError, resetToken, createTask, updateTaskDetails, completeTask, reopenTask, duplicateTask, postponeTask,
+    state, distractionState, ready, storageError, resetToken, createTask, updateTaskDetails, completeTask, reopenTask, duplicateTask, postponeTask,
     moveTaskToInbox, scheduleTask, addSubtask, toggleSubtask, deleteSubtask, addTask, updateTask, toggleTask, deleteTask, restoreTask,
     addProject, updateProject, toggleProjectArchived, addRoutine, updateRoutine, toggleRoutinePaused, generateRoutineTask,
-    addSession, updatePreferences, updatePlanning, updateAppearance, replaceState, loadDemoData, startEmpty, resetLocalData,
+    addSession, updatePreferences, updatePlanning, updateAppearance,
+    upsertDistractorRule, setDistractorRuleEnabled, removeDistractorRule, recordDistraction,
+    replaceState, loadDemoData, startEmpty, resetLocalData,
   ]);
 
   if (!value) return <>{fallback}</>;
