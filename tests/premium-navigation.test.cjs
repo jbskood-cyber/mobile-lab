@@ -69,6 +69,18 @@ test('tab scenes use a restrained crossfade instead of snapping', () => {
   assert.match(layout, /motion\.fast|motionDurations\.fast/);
 });
 
+test('bottom navigation uses one moving active indicator with reduced-motion fallback', () => {
+  const tabBar = read(tabBarPath);
+  assert.match(tabBar, /useSharedValue/);
+  assert.match(tabBar, /useAnimatedStyle/);
+  assert.match(tabBar, /withTiming/);
+  assert.match(tabBar, /useReducedMotion/);
+  assert.match(tabBar, /Animated\.View/);
+  assert.match(tabBar, /activeIndicator/);
+  assert.match(tabBar, /pointerEvents="none"/);
+  assert.doesNotMatch(tabBar, /focused\s*\?\s*<View[^>]+top:\s*0[^>]+backgroundColor:\s*theme\.colors\.accent/s);
+});
+
 test('typography foundation exposes semantic roles and stable numeric variants', () => {
   const theme = read(themeTokensPath);
   assert.match(theme, /typeScale/);
@@ -112,6 +124,6 @@ test('primary shared controls use the same Phosphor icon language', () => {
   const icon = read(iconPath);
   assert.match(icon, /PHOSPHOR_CONTROL_ICONS/);
   for (const iconName of ['plus', 'sliders', 'play', 'pause', 'stop', 'more', 'chevron-right', 'chevron-left', 'chevron-down', 'search', 'check']) {
-    assert.match(icon, new RegExp(`['\"]?${iconName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\"]?\s*:`));
+    assert.match(icon, new RegExp(`['"]?${iconName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]?\s*:`));
   }
 });
