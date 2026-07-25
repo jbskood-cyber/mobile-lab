@@ -6,6 +6,7 @@ const path = require('node:path');
 const tabBarPath = path.join(process.cwd(), 'src', 'ui', 'FocoTabBar.tsx');
 const premiumPath = path.join(process.cwd(), 'src', 'ui', 'premium.ts');
 const motionPath = path.join(process.cwd(), 'src', 'ui', 'motion.ts');
+const themeTokensPath = path.join(process.cwd(), 'src', 'ui', 'themeTokens.ts');
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -33,4 +34,13 @@ test('motion foundation centralizes semantic timings and reduced-motion resoluti
     assert.match(motion, new RegExp(token));
   }
   assert.match(motion, /resolveMotionDuration/);
+});
+
+test('typography foundation exposes semantic roles and stable numeric variants', () => {
+  const theme = read(themeTokensPath);
+  assert.match(theme, /typeScale/);
+  for (const role of ['display', 'screenTitle', 'section', 'body', 'metadata', 'caption', 'metric', 'timer', 'control']) {
+    assert.match(theme, new RegExp(`${role}:`));
+  }
+  assert.match(theme, /fontVariant:\s*\['tabular-nums'\]/);
 });
