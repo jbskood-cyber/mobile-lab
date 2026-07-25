@@ -1,16 +1,16 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FocoIcon, type IconName } from './FocoIcon';
+import type { IconName } from './FocoIcon';
 import { FocoPressable } from './FocoPressable';
+import { FocoTabItem } from './FocoTabItem';
 import { useFocoTheme } from './FocoThemeContext';
 import { useFocoUI } from './FocoUIContext';
 import { motion } from './motion';
 import { useReducedMotion } from './premium';
-import { fontFamilies, typeScale } from './themeTokens';
 
 const routeMeta: Record<string, { label: string; icon: IconName }> = {
   index: { label: 'Hoy', icon: 'home' },
@@ -78,13 +78,13 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
               style={styles.item}
             >
-              <FocoIcon
-                name={meta.icon}
-                size={focused ? 21 : 20}
-                color={focused ? theme.colors.text : theme.colors.inactive}
-                weight={focused ? 'fill' : 'regular'}
+              <FocoTabItem
+                focused={focused}
+                icon={meta.icon}
+                label={meta.label}
+                activeColor={theme.colors.text}
+                inactiveColor={theme.colors.inactive}
               />
-              <Text style={[typeScale.caption, { color: focused ? theme.colors.text : theme.colors.inactive, fontFamily: focused ? fontFamilies.semibold : fontFamilies.medium }]} maxFontSizeMultiplier={1.08}>{meta.label}</Text>
             </FocoPressable>
           );
         })}
