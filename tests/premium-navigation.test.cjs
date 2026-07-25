@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const tabBarPath = path.join(process.cwd(), 'src', 'ui', 'FocoTabBar.tsx');
 const premiumPath = path.join(process.cwd(), 'src', 'ui', 'premium.ts');
+const pressablePath = path.join(process.cwd(), 'src', 'ui', 'FocoPressable.tsx');
 const motionPath = path.join(process.cwd(), 'src', 'ui', 'motion.ts');
 const themeTokensPath = path.join(process.cwd(), 'src', 'ui', 'themeTokens.ts');
 const iconPath = path.join(process.cwd(), 'src', 'ui', 'FocoIcon.tsx');
@@ -40,6 +41,14 @@ test('premium press feedback exposes restrained semantic variants', () => {
   assert.match(premium, /primary/);
   assert.doesNotMatch(premium, /opacity:\s*0\.72/);
   assert.match(tabBar, /pressFeedback\.quiet/);
+});
+
+test('shared premium press primitive respects reduced motion', () => {
+  const source = read(pressablePath);
+  assert.match(source, /useReducedMotion/);
+  assert.match(source, /feedback\?:\s*'quiet'\s*\|\s*'control'\s*\|\s*'primary'/);
+  assert.match(source, /reducedMotion/);
+  assert.match(source, /pressFeedback\[feedback\]/);
 });
 
 test('motion foundation centralizes semantic timings and reduced-motion resolution', () => {
