@@ -1,0 +1,67 @@
+name: B4.3A font family migration
+
+on:
+  push:
+    branches:
+      - feature/foco-premium-foundation-b4-3a
+    paths:
+      - .github/workflows/b4-3a-font-family-migrate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-font-family:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/foco-premium-foundation-b4-3a
+          fetch-depth: 0
+
+      - name: Replace legacy runtime font family names
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const replacements = new Map([
+            ['Manrope_400Regular', 'InstrumentSans_400Regular'],
+            ['Manrope_500Medium', 'InstrumentSans_500Medium'],
+            ['Manrope_600SemiBold', 'InstrumentSans_600SemiBold'],
+            ['Manrope_700Bold', 'InstrumentSans_700Bold'],
+          ]);
+          const roots = ['app', 'src'];
+          let changed = 0;
+          function walk(dir) {
+            if (!fs.existsSync(dir)) return;
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const file = path.join(dir, entry.name);
+              if (entry.isDirectory()) walk(file);
+              else if (/\.(?:ts|tsx|js|jsx)$/.test(entry.name)) {
+                const before = fs.readFileSync(file, 'utf8');
+                let after = before;
+                for (const [from, to] of replacements) after = after.split(from).join(to);
+                if (after !== before) {
+                  fs.writeFileSync(file, after);
+                  changed += 1;
+                }
+              }
+            }
+          }
+          roots.forEach(walk);
+          console.log(`Migrated ${changed} source files to Instrument Sans runtime family names.`);
+          NODE
+
+      - name: Commit migration
+        shell: bash
+        run: |
+          if git diff --quiet -- app src; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app src
+          git commit -m "refactor: migrate FOCO runtime typography to Instrument Sans"
+          git push origin HEAD:feature/foco-premium-foundation-b4-3a
