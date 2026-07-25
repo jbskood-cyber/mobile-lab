@@ -6,7 +6,7 @@ import { FocoIcon, type IconName } from './FocoIcon';
 import { useFocoTheme } from './FocoThemeContext';
 import { useFocoUI } from './FocoUIContext';
 import { pressFeedback } from './premium';
-import { fontFamilies } from './themeTokens';
+import { fontFamilies, typeScale } from './themeTokens';
 
 const routeMeta: Record<string, { label: string; icon: IconName }> = {
   index: { label: 'Hoy', icon: 'home' },
@@ -46,8 +46,13 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
               style={({ pressed }) => [styles.item, pressed && pressFeedback.quiet]}
             >
-              <FocoIcon name={meta.icon} size={focused ? 21 : 20} color={focused ? theme.colors.text : theme.colors.inactive} strokeWidth={focused ? 2.05 : 1.55} />
-              <Text style={{ color: focused ? theme.colors.text : theme.colors.inactive, fontFamily: focused ? fontFamilies.semibold : fontFamilies.medium, fontSize: 9.5, lineHeight: 12 }} maxFontSizeMultiplier={1.08}>{meta.label}</Text>
+              <FocoIcon
+                name={meta.icon}
+                size={focused ? 21 : 20}
+                color={focused ? theme.colors.text : theme.colors.inactive}
+                weight={focused ? 'fill' : 'regular'}
+              />
+              <Text style={[typeScale.caption, { color: focused ? theme.colors.text : theme.colors.inactive, fontFamily: focused ? fontFamilies.semibold : fontFamilies.medium }]} maxFontSizeMultiplier={1.08}>{meta.label}</Text>
               {focused ? <View style={{ position: 'absolute', top: 0, width: 20, height: 2, borderRadius: 1, backgroundColor: theme.colors.accent }} /> : null}
             </Pressable>
           );
