@@ -1,9 +1,13 @@
 import { defaultFocusPreferences, type FocusMode, type FocusPhase, type FocusPreferences } from './model';
 
+export const DEFAULT_TIMER_SECONDS = 25 * 60;
+export type TimerMode = FocusMode | 'timer';
+
 export type FocusRuntime = {
-  mode: FocusMode;
+  mode: TimerMode;
   phase: FocusPhase;
   focusSeconds: number;
+  timerSeconds: number;
   shortBreakSeconds: number;
   longBreakSeconds: number;
   breakSeconds: number;
@@ -21,7 +25,7 @@ export type FocusRuntime = {
 };
 
 export type TimerConfiguration = Partial<Pick<FocusRuntime,
-  'focusSeconds' | 'shortBreakSeconds' | 'longBreakSeconds' | 'breakSeconds' | 'longBreakEvery' | 'targetCycles' |
+  'focusSeconds' | 'timerSeconds' | 'shortBreakSeconds' | 'longBreakSeconds' | 'breakSeconds' | 'longBreakEvery' | 'targetCycles' |
   'autoStartBreaks' | 'autoStartFocus' | 'continuousMode' | 'projectId' | 'taskId'
 >>;
 
@@ -31,6 +35,7 @@ export function createFocusRuntime(preferences: FocusPreferences = defaultFocusP
     mode: 'pomodoro',
     phase: 'focus',
     focusSeconds: preferences.focusMinutes * 60,
+    timerSeconds: DEFAULT_TIMER_SECONDS,
     shortBreakSeconds,
     longBreakSeconds: preferences.longBreakMinutes * 60,
     breakSeconds: shortBreakSeconds,
@@ -48,6 +53,7 @@ export function createFocusRuntime(preferences: FocusPreferences = defaultFocusP
 
 export function getPhaseTotalSeconds(runtime: FocusRuntime) {
   if (runtime.mode === 'stopwatch') return Math.max(1, runtime.focusSeconds);
+  if (runtime.mode === 'timer') return Math.max(1, runtime.timerSeconds);
   if (runtime.phase === 'longBreak') return runtime.longBreakSeconds;
   if (runtime.phase === 'shortBreak') return runtime.shortBreakSeconds;
   return runtime.focusSeconds;
@@ -77,18 +83,28 @@ export function pauseTimer(runtime: FocusRuntime, now = Date.now()): FocusRuntim
 }
 
 export function resetTimer(runtime: FocusRuntime): FocusRuntime {
+  const baseSeconds = runtime.mode === 'pomodoro'
+    ? runtime.focusSeconds
+    : runtime.mode === 'timer'
+      ? runtime.timerSeconds
+      : 0;
   return {
     ...runtime,
     phase: 'focus',
     currentCycle: 1,
     running: false,
     anchorMs: 0,
-    baseSeconds: runtime.mode === 'pomodoro' ? runtime.focusSeconds : 0,
+    baseSeconds,
   };
 }
 
-export function setTimerMode(runtime: FocusRuntime, mode: FocusMode): FocusRuntime {
+export function setTimerMode(runtime: FocusRuntime, mode: TimerMode): FocusRuntime {
   if (runtime.mode === mode) return runtime;
+  const baseSeconds = mode === 'pomodoro'
+    ? runtime.focusSeconds
+    : mode === 'timer'
+      ? runtime.timerSeconds
+      : 0;
   return {
     ...runtime,
     mode,
@@ -96,12 +112,13 @@ export function setTimerMode(runtime: FocusRuntime, mode: FocusMode): FocusRunti
     currentCycle: 1,
     running: false,
     anchorMs: 0,
-    baseSeconds: mode === 'pomodoro' ? runtime.focusSeconds : 0,
+    baseSeconds,
   };
 }
 
 export function configureTimer(runtime: FocusRuntime, values: TimerConfiguration): FocusRuntime {
   const focusSeconds = Math.max(60, Math.round(values.focusSeconds ?? runtime.focusSeconds));
+  const timerSeconds = Math.max(60, Math.round(values.timerSeconds ?? runtime.timerSeconds));
   const shortBreakSeconds = Math.max(60, Math.round(values.shortBreakSeconds ?? values.breakSeconds ?? runtime.shortBreakSeconds));
   const longBreakSeconds = Math.max(60, Math.round(values.longBreakSeconds ?? runtime.longBreakSeconds));
   const targetCycles = Math.min(12, Math.max(1, Math.round(values.targetCycles ?? runtime.targetCycles)));
@@ -110,6 +127,7 @@ export function configureTimer(runtime: FocusRuntime, values: TimerConfiguration
     ...runtime,
     ...values,
     focusSeconds,
+    timerSeconds,
     shortBreakSeconds,
     longBreakSeconds,
     breakSeconds: shortBreakSeconds,

@@ -15,6 +15,7 @@
     "src/core/model.ts",
     "src/core/migration.ts",
     "src/core/agenda.ts",
+    "src/core/agendaDay.ts",
     "src/core/analytics.ts",
     "src/core/focusTimer.ts",
     "src/core/hydration.ts",

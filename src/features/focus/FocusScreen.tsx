@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from
 import { useLocalSearchParams } from 'expo-router';
 
 import { useFocoStore } from '@/src/core/FocoStore';
-import { formatDuration, startOfLocalDay, type FocusMode, type Task } from '@/src/core/model';
+import { formatDuration, startOfLocalDay, type Task } from '@/src/core/model';
 import { useFocusTimer } from '@/src/core/useFocusTimer';
 import { FocusKeepAwake } from '@/src/platform/FocusKeepAwake';
 import { FocoIcon, type IconName } from '@/src/ui/FocoIcon';
@@ -13,6 +13,8 @@ import { ProgressRing } from '@/src/ui/ProgressRing';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 import { normalizeIntegerDraft, parseOptionalInteger } from '@/src/ui/formModel';
 import { hapticSelection, pressedStyle } from '@/src/ui/premium';
+import { FocusModeSelector } from './FocusModeSelector';
+import { TimerPresetSheet } from './TimerPresetSheet';
 
 function clockLabel(seconds: number) {
   const safe = Math.max(0, Math.round(seconds));
@@ -32,6 +34,7 @@ export function FocusScreen() {
   const task = taskId ? state.tasks.find((item) => item.id === taskId) : undefined;
   const timer = useFocusTimer(project?.id ?? 'personal', task?.id);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [timerPresetOpen, setTimerPresetOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const [focusDraft, setFocusDraft] = useState('50');
   const [shortBreakDraft, setShortBreakDraft] = useState('10');
@@ -58,7 +61,20 @@ export function FocusScreen() {
   const pomodorosToday = todaySessions.filter((session) => session.mode === 'pomodoro' && session.completed).length;
   const taskSessions = task ? state.sessions.filter((session) => session.taskId === task.id && session.phase === 'focus') : [];
   const taskPomodoros = taskSessions.filter((session) => session.mode === 'pomodoro' && session.completed).length;
-  const phaseLabel = timer.runtime.mode === 'stopwatch' ? 'Cronómetro' : timer.runtime.phase === 'longBreak' ? 'Descanso largo' : timer.runtime.phase === 'shortBreak' ? 'Descanso' : 'Enfoque';
+  const phaseLabel = timer.runtime.mode === 'stopwatch'
+    ? 'Cronómetro'
+    : timer.runtime.mode === 'timer'
+      ? 'Temporizador'
+      : timer.runtime.phase === 'longBreak'
+        ? 'Descanso largo'
+        : timer.runtime.phase === 'shortBreak'
+          ? 'Descanso'
+          : 'Enfoque';
+  const secondaryTimerLabel = timer.runtime.mode === 'pomodoro'
+    ? `Ciclo ${timer.runtime.currentCycle} de ${timer.runtime.targetCycles}`
+    : timer.runtime.mode === 'timer'
+      ? 'Cuenta regresiva'
+      : 'Tiempo acumulado';
 
   const openSettings = () => {
     const preferences = timer.preferences;
@@ -101,7 +117,15 @@ export function FocusScreen() {
     <>
       <FocusKeepAwake active={timer.runtime.running && timer.preferences.keepAwake} />
       <FocoScreen title="Enfoque" subtitle={timer.runtime.running ? 'Sesión activa' : 'Elige una tarea y empieza.'} screenKey="focus" rightIcon="sliders" rightAccessibilityLabel="Configurar enfoque" onRightPress={openSettings}>
-        <View style={[styles.modeSwitch, { backgroundColor: theme.colors.panelSoft, borderColor: theme.colors.borderSoft }]}>{([['pomodoro', 'Pomodoro'], ['stopwatch', 'Cronómetro']] as Array<[FocusMode, string]>).map(([mode, label]) => { const selected = timer.runtime.mode === mode; return <Pressable key={mode} accessibilityRole="radio" accessibilityState={{ checked: selected }} disabled={timer.runtime.running} onPress={() => timer.changeMode(mode)} style={({ pressed }) => [styles.mode, selected && { backgroundColor: theme.colors.inverse }, timer.runtime.running && !selected && styles.disabled, pressed && pressedStyle]}><Text style={[styles.modeText, { color: selected ? theme.colors.inverseText : theme.colors.muted }]}>{label}</Text></Pressable>; })}</View>
+        <FocusModeSelector
+          mode={timer.runtime.mode}
+          disabled={timer.runtime.running}
+          pomodoroMinutes={Math.round(timer.runtime.focusSeconds / 60)}
+          timerMinutes={Math.round(timer.runtime.timerSeconds / 60)}
+          onMode={timer.changeMode}
+          onConfigurePomodoro={openSettings}
+          onConfigureTimer={() => setTimerPresetOpen(true)}
+        />
 
         <Pressable accessibilityRole="button" accessibilityLabel="Elegir tarea o proyecto" disabled={timer.runtime.running} onPress={() => setContextOpen(true)} style={({ pressed }) => [styles.context, { borderColor: theme.colors.borderSoft }, pressed && pressedStyle]}>
           <View style={[styles.contextIcon, { backgroundColor: theme.colors.panelStrong }]}><FocoIcon name={(task ? 'checklist' : project?.icon ?? 'folder') as IconName} size={19} color={theme.colors.text} /></View>
@@ -111,7 +135,7 @@ export function FocusScreen() {
 
         <View style={styles.timerWrap}>
           <ProgressRing size={226} strokeWidth={9} progress={timer.progress} color={theme.colors.accent} trackColor={theme.colors.panelStrong}>
-            <View style={styles.timerCopy} accessibilityLiveRegion="polite"><Text style={[styles.phase, { color: theme.colors.muted }]}>{phaseLabel}</Text><Text style={[styles.timer, { color: theme.colors.text }]} maxFontSizeMultiplier={1.03}>{timer.ready ? clockLabel(timer.seconds) : '··:··'}</Text><Text style={[styles.cycle, { color: theme.colors.muted }]}>{timer.runtime.mode === 'pomodoro' ? `Ciclo ${timer.runtime.currentCycle} de ${timer.runtime.targetCycles}` : 'Tiempo acumulado'}</Text></View>
+            <View style={styles.timerCopy} accessibilityLiveRegion="polite"><Text style={[styles.phase, { color: theme.colors.muted }]}>{phaseLabel}</Text><Text style={[styles.timer, { color: theme.colors.text }]} maxFontSizeMultiplier={1.03}>{timer.ready ? clockLabel(timer.seconds) : '··:··'}</Text><Text style={[styles.cycle, { color: theme.colors.muted }]}>{secondaryTimerLabel}</Text></View>
           </ProgressRing>
         </View>
 
@@ -143,6 +167,16 @@ export function FocusScreen() {
         <Toggle label="Vibración" value={vibration} onChange={setVibration} />
         <Toggle label="Sonido" value={sound} onChange={setSound} last />
       </FocoSheet>
+
+      <TimerPresetSheet
+        visible={timerPresetOpen}
+        minutes={Math.round(timer.runtime.timerSeconds / 60)}
+        onClose={() => setTimerPresetOpen(false)}
+        onApply={(minutes) => {
+          timer.configure({ timerSeconds: minutes * 60 });
+          setTimerPresetOpen(false);
+        }}
+      />
     </>
   );
 }
@@ -153,10 +187,6 @@ function NumberField({ label, value, onChange, fallback, min, max }: { label: st
 function Toggle({ label, value, onChange, last = false }: { label: string; value: boolean; onChange: (value: boolean) => void; last?: boolean }) { const theme = useFocoTheme(); return <View style={[styles.toggleRow, !last && { borderBottomColor: theme.colors.borderSoft, borderBottomWidth: StyleSheet.hairlineWidth }]}><Text style={[styles.toggleLabel, { color: theme.colors.text }]}>{label}</Text><Switch value={value} onValueChange={(next) => { onChange(next); hapticSelection(); }} trackColor={{ false: theme.colors.panelStrong, true: theme.colors.accent }} thumbColor={theme.colors.inverseText} /></View>; }
 
 const styles = StyleSheet.create({
-  modeSwitch: { minHeight: 44, marginTop: 9, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', padding: 3 },
-  mode: { flex: 1, minHeight: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  modeText: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11.5, lineHeight: 15 },
-  disabled: { opacity: 0.35 },
   context: { minHeight: 58, marginTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: 9 },
   contextIcon: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   contextCopy: { flex: 1, minWidth: 0 },

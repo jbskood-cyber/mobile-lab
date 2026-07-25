@@ -1,5 +1,12 @@
+import { useEffect } from 'react';
 import { View } from 'react-native';
+import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
+
+import { motionDurations } from './motion';
+import { useReducedMotion } from './premium';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 type Props = {
   size: number;
@@ -23,6 +30,16 @@ export function ProgressRing({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const normalized = Math.max(0, Math.min(1, progress));
+  const reducedMotion = useReducedMotion();
+  const animatedProgress = useSharedValue(normalized);
+
+  useEffect(() => {
+    animatedProgress.value = withTiming(normalized, { duration: reducedMotion ? 0 : motionDurations.micro });
+  }, [animatedProgress, normalized, reducedMotion]);
+
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference * (1 - animatedProgress.value),
+  }));
 
   return (
     <View
@@ -48,7 +65,7 @@ export function ProgressRing({
           strokeWidth={strokeWidth}
           fill="none"
         />
-        <Circle
+        <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -57,7 +74,7 @@ export function ProgressRing({
           fill="none"
           strokeLinecap="round"
           strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={circumference * (1 - normalized)}
+          animatedProps={animatedProps}
         />
       </Svg>
       {children}

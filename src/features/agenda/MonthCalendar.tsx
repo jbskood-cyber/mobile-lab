@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { buildMonthGrid, shiftMonth } from '@/src/core/calendar';
@@ -9,18 +9,34 @@ import { hapticSelection, pressedStyle } from '@/src/ui/premium';
 import type { FocoTheme } from '@/src/ui/themeTokens';
 
 const weekdays = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
+const DOUBLE_TAP_MS = 280;
 
-export function MonthCalendar({ state, anchor, selected, onAnchor, onSelect }: {
+export function MonthCalendar({ state, anchor, selected, onAnchor, onSelect, onOpenDay }: {
   state: FocoState;
   anchor: number;
   selected: number;
   onAnchor: (value: number) => void;
   onSelect: (value: number) => void;
+  onOpenDay: (value: number) => void;
 }) {
   const theme = useFocoTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const days = useMemo(() => buildMonthGrid(state, anchor), [anchor, state]);
+  const lastTap = useRef<{ day: number; at: number } | null>(null);
   const monthLabel = new Date(anchor).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }).replace(/^./, (value) => value.toUpperCase());
+
+  const handleDayPress = (timestamp: number) => {
+    const now = Date.now();
+    const previous = lastTap.current;
+    if (previous && previous.day === timestamp && now - previous.at <= DOUBLE_TAP_MS) {
+      lastTap.current = null;
+      onOpenDay(timestamp);
+      return;
+    }
+    lastTap.current = { day: timestamp, at: now };
+    onSelect(timestamp);
+    hapticSelection();
+  };
 
   return (
     <View style={styles.root}>
@@ -39,7 +55,8 @@ export function MonthCalendar({ state, anchor, selected, onAnchor, onSelect }: {
               accessibilityRole="radio"
               accessibilityState={{ checked: active }}
               accessibilityLabel={`${new Date(day.timestamp).toLocaleDateString('es-MX')}, ${day.taskCount} tareas`}
-              onPress={() => { onSelect(day.timestamp); hapticSelection(); }}
+              accessibilityHint="Toca una vez para seleccionar; dos veces para abrir el día"
+              onPress={() => handleDayPress(day.timestamp)}
               style={({ pressed }) => [styles.cell, active && styles.cellActive, pressed && pressedStyle]}
             >
               <Text style={[styles.day, !day.inMonth && styles.outside, active && styles.dayActive]}>{day.day}</Text>

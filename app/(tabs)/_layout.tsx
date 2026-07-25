@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 
 import { FocoTabBar } from '@/src/ui/FocoTabBar';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
+import { motion } from '@/src/ui/motion';
 
 export default function TabsLayout() {
   const theme = useFocoTheme();
@@ -13,7 +14,11 @@ export default function TabsLayout() {
         headerShown: false,
         sceneStyle: { backgroundColor: theme.colors.bg },
         tabBarHideOnKeyboard: true,
-        animation: 'none',
+        animation: 'fade',
+        transitionSpec: {
+          animation: 'timing',
+          config: { duration: motion.fast },
+        },
         lazy: true,
       }}
     >

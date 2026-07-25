@@ -1,6 +1,6 @@
 export type ProjectIcon = 'briefcase' | 'book' | 'heart' | 'grid' | 'bulb' | 'archive';
 export type TaskPriority = 'Alta' | 'Media' | 'Baja';
-export type FocusMode = 'pomodoro' | 'stopwatch';
+export type FocusMode = 'pomodoro' | 'timer' | 'stopwatch';
 export type FocusPhase = 'focus' | 'shortBreak' | 'longBreak';
 export type RecurrenceKind = 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly';
 export type AppearancePreference = 'system' | 'light' | 'dark';
