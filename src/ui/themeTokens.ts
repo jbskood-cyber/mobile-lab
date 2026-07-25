@@ -89,13 +89,11 @@ export const density = {
 } as const;
 
 export const fontFamilies = {
-  regular: 'Manrope_400Regular',
-  medium: 'Manrope_500Medium',
-  semibold: 'Manrope_600SemiBold',
-  bold: 'Manrope_700Bold',
+  regular: 'InstrumentSans_400Regular',
+  medium: 'InstrumentSans_500Medium',
+  semibold: 'InstrumentSans_600SemiBold',
+  bold: 'InstrumentSans_700Bold',
 } as const;
-
-const tabularNumbers = ['tabular-nums'] as const;
 
 export const typeScale = {
   display: { fontFamily: fontFamilies.semibold, fontSize: 30, lineHeight: 35, letterSpacing: -0.8 },
