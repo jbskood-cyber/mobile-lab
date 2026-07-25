@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FocoIcon, type IconName } from './FocoIcon';
 import { useFocoTheme } from './FocoThemeContext';
 import { useFocoUI } from './FocoUIContext';
-import { pressedStyle } from './premium';
+import { pressFeedback } from './premium';
 import { fontFamilies } from './themeTokens';
 
 const routeMeta: Record<string, { label: string; icon: IconName }> = {
@@ -44,7 +44,7 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
               accessibilityLabel={options?.tabBarAccessibilityLabel ?? meta.label}
               onPress={onPress}
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-              style={({ pressed }) => [styles.item, pressed && pressedStyle]}
+              style={({ pressed }) => [styles.item, pressed && pressFeedback.quiet]}
             >
               <FocoIcon name={meta.icon} size={focused ? 21 : 20} color={focused ? theme.colors.text : theme.colors.inactive} strokeWidth={focused ? 2.05 : 1.55} />
               <Text style={{ color: focused ? theme.colors.text : theme.colors.inactive, fontFamily: focused ? fontFamilies.semibold : fontFamilies.medium, fontSize: 9.5, lineHeight: 12 }} maxFontSizeMultiplier={1.08}>{meta.label}</Text>
