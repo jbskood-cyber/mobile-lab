@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const tabBarPath = path.join(process.cwd(), 'src', 'ui', 'FocoTabBar.tsx');
 const premiumPath = path.join(process.cwd(), 'src', 'ui', 'premium.ts');
+const motionPath = path.join(process.cwd(), 'src', 'ui', 'motion.ts');
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -24,4 +25,12 @@ test('premium press feedback exposes restrained semantic variants', () => {
   assert.match(premium, /primary/);
   assert.doesNotMatch(premium, /opacity:\s*0\.72/);
   assert.match(tabBar, /pressFeedback\.quiet/);
+});
+
+test('motion foundation centralizes semantic timings and reduced-motion resolution', () => {
+  const motion = read(motionPath);
+  for (const token of ['micro', 'fast', 'standard', 'softSpring', 'snappySpring', 'fade', 'crossfade', 'shortSlide']) {
+    assert.match(motion, new RegExp(token));
+  }
+  assert.match(motion, /resolveMotionDuration/);
 });
