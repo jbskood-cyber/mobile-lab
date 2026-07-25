@@ -15,6 +15,7 @@ const skeletonPulseSource = source('src/ui/FocoSkeletonPulse.tsx');
 const sheetSource = source('src/ui/FocoSheet.tsx');
 const uiContextSource = source('src/ui/FocoUIContext.tsx');
 const tabBarSource = source('src/ui/FocoTabBar.tsx');
+const permissionSource = source('src/ui/FocoPermissionEducation.tsx');
 const packageSource = source('package.json');
 
 test('FOCO owns one abstract empty-state primitive without mascot or stock-art language', () => {
@@ -65,4 +66,14 @@ test('shared sheets already keep keyboard, footer and dismiss behavior polished 
   assert.match(uiContextSource, /Keyboard\.addListener\('keyboardDidHide'/);
   assert.match(tabBarSource, /keyboardVisible/);
   assert.doesNotMatch(packageSource, /keyboard-controller|keyboard-aware-scroll-view/i);
+});
+
+test('permission education explains benefit and privacy before delegating the platform action', () => {
+  assert.match(permissionSource, /export function FocoPermissionEducation/);
+  assert.match(permissionSource, /benefit/);
+  assert.match(permissionSource, /privacy/);
+  assert.match(permissionSource, /actionLabel/);
+  assert.match(permissionSource, /onContinue/);
+  assert.match(permissionSource, /accessibilityRole="button"/);
+  assert.doesNotMatch(permissionSource, /UsageStatsManager|AccessibilityService|requestPermissionsAsync|IntentLauncher|Linking\.openSettings/);
 });
