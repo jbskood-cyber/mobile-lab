@@ -1,12 +1,12 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FocoIcon, type IconName } from './FocoIcon';
+import { FocoPressable } from './FocoPressable';
 import { useFocoTheme } from './FocoThemeContext';
 import { useFocoUI } from './FocoUIContext';
-import { hapticSelection, pressedStyle } from './premium';
-import { fontFamilies } from './themeTokens';
+import { fontFamilies, typeScale } from './themeTokens';
 
 const routeMeta: Record<string, { label: string; icon: IconName }> = {
   index: { label: 'Hoy', icon: 'home' },
@@ -33,24 +33,29 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
           const onPress = () => {
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (event.defaultPrevented) return;
-            hapticSelection();
             if (focused) scrollToTop(route.name);
             else navigation.navigate(route.name);
           };
           return (
-            <Pressable
+            <FocoPressable
               key={route.key}
+              feedback="quiet"
               accessibilityRole="tab"
               accessibilityState={{ selected: focused }}
               accessibilityLabel={options?.tabBarAccessibilityLabel ?? meta.label}
               onPress={onPress}
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-              style={({ pressed }) => [styles.item, pressed && pressedStyle]}
+              style={styles.item}
             >
-              <FocoIcon name={meta.icon} size={focused ? 21 : 20} color={focused ? theme.colors.text : theme.colors.inactive} strokeWidth={focused ? 2.05 : 1.55} />
-              <Text style={{ color: focused ? theme.colors.text : theme.colors.inactive, fontFamily: focused ? fontFamilies.semibold : fontFamilies.medium, fontSize: 9.5, lineHeight: 12 }} maxFontSizeMultiplier={1.08}>{meta.label}</Text>
+              <FocoIcon
+                name={meta.icon}
+                size={focused ? 21 : 20}
+                color={focused ? theme.colors.text : theme.colors.inactive}
+                weight={focused ? 'fill' : 'regular'}
+              />
+              <Text style={[typeScale.caption, { color: focused ? theme.colors.text : theme.colors.inactive, fontFamily: focused ? fontFamilies.semibold : fontFamilies.medium }]} maxFontSizeMultiplier={1.08}>{meta.label}</Text>
               {focused ? <View style={{ position: 'absolute', top: 0, width: 20, height: 2, borderRadius: 1, backgroundColor: theme.colors.accent }} /> : null}
-            </Pressable>
+            </FocoPressable>
           );
         })}
       </View>

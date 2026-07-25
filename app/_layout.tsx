@@ -1,10 +1,10 @@
 import {
-  Manrope_400Regular,
-  Manrope_500Medium,
-  Manrope_600SemiBold,
-  Manrope_700Bold,
+  InstrumentSans_400Regular,
+  InstrumentSans_500Medium,
+  InstrumentSans_600SemiBold,
+  InstrumentSans_700Bold,
   useFonts,
-} from '@expo-google-fonts/manrope';
+} from '@expo-google-fonts/instrument-sans';
 import { Stack, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -59,7 +59,7 @@ function ThemedApplication() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({ Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold });
+  const [fontsLoaded, fontError] = useFonts({ InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSans_700Bold });
   if (!fontsLoaded && !fontError) return <HydrationFallback />;
   return (
     <FocoStoreProvider fallback={<HydrationFallback />} onReady={hideSplash}>

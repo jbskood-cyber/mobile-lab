@@ -221,8 +221,8 @@ const stylesStatic = StyleSheet.create({
   chipText: { fontSize: 11.5, lineHeight: 15 },
   stepper: { minHeight: 52, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   stepButton: { width: 52, height: 50, alignItems: 'center', justifyContent: 'center' },
-  stepSymbol: { fontFamily: 'Manrope_400Regular', fontSize: 22, lineHeight: 26 },
+  stepSymbol: { fontFamily: 'InstrumentSans_400Regular', fontSize: 22, lineHeight: 26 },
   stepValue: { flex: 1, alignItems: 'center' },
-  stepNumber: { fontFamily: 'Manrope_600SemiBold', fontSize: 17, lineHeight: 21, fontVariant: ['tabular-nums'] },
-  stepLabel: { fontFamily: 'Manrope_400Regular', fontSize: 9.5, lineHeight: 12, marginTop: 1 },
+  stepNumber: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 17, lineHeight: 21, fontVariant: ['tabular-nums'] },
+  stepLabel: { fontFamily: 'InstrumentSans_400Regular', fontSize: 9.5, lineHeight: 12, marginTop: 1 },
 });

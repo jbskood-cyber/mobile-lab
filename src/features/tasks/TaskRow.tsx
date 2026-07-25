@@ -40,9 +40,9 @@ const styles = StyleSheet.create({
   content: { flex: 1, minWidth: 0, paddingVertical: 9 },
   pressed: { opacity: 0.68 },
   titleLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  title: { flex: 1, fontFamily: 'Manrope_500Medium', fontSize: 14, lineHeight: 18 },
+  title: { flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, lineHeight: 18 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4, marginTop: 3 },
-  meta: { maxWidth: 112, fontFamily: 'Manrope_400Regular', fontSize: 9.8, lineHeight: 13, fontVariant: ['tabular-nums'] },
+  meta: { maxWidth: 112, fontFamily: 'InstrumentSans_400Regular', fontSize: 9.8, lineHeight: 13, fontVariant: ['tabular-nums'] },
   dot: { width: 3, height: 3, borderRadius: 2 },
   trailing: { width: 38, minHeight: 56, alignItems: 'center', justifyContent: 'center' },
 });

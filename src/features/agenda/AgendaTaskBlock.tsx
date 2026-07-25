@@ -37,10 +37,10 @@ export function AgendaTaskBlock({ task, projectName, completedPomodoros = 0, onP
 const styles = StyleSheet.create({
   base: { minHeight: 52, borderRadius: 11, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 10, paddingVertical: 7, overflow: 'hidden' },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  time: { fontFamily: 'Manrope_600SemiBold', fontSize: 10.5, lineHeight: 13, fontVariant: ['tabular-nums'] },
-  duration: { fontFamily: 'Manrope_500Medium', fontSize: 9.5, lineHeight: 12 },
-  title: { fontFamily: 'Manrope_600SemiBold', fontSize: 13, lineHeight: 17, marginTop: 2 },
+  time: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 10.5, lineHeight: 13, fontVariant: ['tabular-nums'] },
+  duration: { fontFamily: 'InstrumentSans_500Medium', fontSize: 9.5, lineHeight: 12 },
+  title: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13, lineHeight: 17, marginTop: 2 },
   meta: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  metaText: { maxWidth: 100, fontFamily: 'Manrope_400Regular', fontSize: 9.5, lineHeight: 12 },
+  metaText: { maxWidth: 100, fontFamily: 'InstrumentSans_400Regular', fontSize: 9.5, lineHeight: 12 },
   dot: { width: 3, height: 3, borderRadius: 2 },
 });

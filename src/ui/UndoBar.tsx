@@ -19,7 +19,7 @@ export function UndoBar({ message, actionLabel = 'Deshacer', onAction }: { messa
 
 const styles = StyleSheet.create({
   bar: { position: 'absolute', zIndex: 50, left: 14, right: 14, minHeight: 50, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingLeft: 12, paddingRight: 5, flexDirection: 'row', alignItems: 'center', shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 5 },
-  message: { flex: 1, fontFamily: 'Manrope_500Medium', fontSize: 11.5, lineHeight: 16 },
+  message: { flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 11.5, lineHeight: 16 },
   action: { minWidth: 76, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 11 },
-  actionText: { fontFamily: 'Manrope_700Bold', fontSize: 11.5, lineHeight: 15 },
+  actionText: { fontFamily: 'InstrumentSans_700Bold', fontSize: 11.5, lineHeight: 15 },
 });
