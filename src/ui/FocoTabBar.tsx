@@ -1,11 +1,15 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FocoIcon, type IconName } from './FocoIcon';
 import { FocoPressable } from './FocoPressable';
 import { useFocoTheme } from './FocoThemeContext';
 import { useFocoUI } from './FocoUIContext';
+import { motion } from './motion';
+import { useReducedMotion } from './premium';
 import { fontFamilies, typeScale } from './themeTokens';
 
 const routeMeta: Record<string, { label: string; icon: IconName }> = {
@@ -16,16 +20,43 @@ const routeMeta: Record<string, { label: string; icon: IconName }> = {
   stats: { label: 'Progreso', icon: 'bars' },
 };
 
+const INDICATOR_WIDTH = 20;
+
 export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const theme = useFocoTheme();
+  const reducedMotion = useReducedMotion();
   const { keyboardVisible, overlayCount, appMenuVisible, focusImmersive, scrollToTop } = useFocoUI();
+  const [barWidth, setBarWidth] = useState(0);
+  const indicatorX = useSharedValue(0);
+  const tabWidth = state.routes.length > 0 ? barWidth / state.routes.length : 0;
+
+  useEffect(() => {
+    const target = tabWidth > 0
+      ? state.index * tabWidth + Math.max(0, (tabWidth - INDICATOR_WIDTH) / 2)
+      : 0;
+    indicatorX.value = reducedMotion
+      ? target
+      : withTiming(target, { duration: motion.fast });
+  }, [indicatorX, reducedMotion, state.index, tabWidth]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.value }],
+  }));
+
   if (keyboardVisible || overlayCount > 0 || appMenuVisible || focusImmersive) return null;
 
   return (
     <View style={{ backgroundColor: theme.colors.bgRaised, paddingBottom: Math.max(insets.bottom, 4) }}>
       <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.borderSoft }} />
-      <View style={{ height: theme.density.tabBarHeight, flexDirection: 'row', alignItems: 'center' }}>
+      <View
+        onLayout={(event) => setBarWidth(event.nativeEvent.layout.width)}
+        style={{ height: theme.density.tabBarHeight, flexDirection: 'row', alignItems: 'center' }}
+      >
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.activeIndicator, { backgroundColor: theme.colors.accent }, indicatorStyle]}
+        />
         {state.routes.map((route, index) => {
           const focused = state.index === index;
           const meta = routeMeta[route.name] ?? { label: route.name, icon: 'circle' as IconName };
@@ -54,7 +85,6 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
                 weight={focused ? 'fill' : 'regular'}
               />
               <Text style={[typeScale.caption, { color: focused ? theme.colors.text : theme.colors.inactive, fontFamily: focused ? fontFamilies.semibold : fontFamilies.medium }]} maxFontSizeMultiplier={1.08}>{meta.label}</Text>
-              {focused ? <View style={{ position: 'absolute', top: 0, width: 20, height: 2, borderRadius: 1, backgroundColor: theme.colors.accent }} /> : null}
             </FocoPressable>
           );
         })}
@@ -65,4 +95,5 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
 
 const styles = StyleSheet.create({
   item: { flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  activeIndicator: { position: 'absolute', top: 0, left: 0, width: INDICATOR_WIDTH, height: 2, borderRadius: 1, zIndex: 2 },
 });
