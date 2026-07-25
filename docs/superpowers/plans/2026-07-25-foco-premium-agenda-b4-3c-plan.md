@@ -8,6 +8,10 @@
 
 **Tech Stack:** Expo SDK 54, React Native 0.81, Expo Router, React Native Reanimated ~4.1.1 already merged in B4.3A, TypeScript, Node test runner, existing FocoStore/session model.
 
+## Execution status
+
+Product implementation for Tasks 1–4 is present on `feature/foco-premium-agenda-b4-3c` at the current branch head. PR #23 is intentionally retargeted to `main` while it remains draft so the repository's normal pull-request CI can validate the complete stacked result. B4.3C must not merge before B4.3B passes Samsung review and PR #22 merges. Task 5 remains the active gate until CI evidence is green.
+
 ## Global Constraints
 
 - Do not change `FocoState.version`, persisted session shape, task/project IDs, migrations, reminders or notifications.
@@ -35,7 +39,7 @@
   - `getAgendaSessionEvents(state: FocoState, day: number): AgendaSessionEvent[]`
   - `getAgendaTimelineWindow(state: FocoState, day: number): { startHour: number; endHour: number }`
 
-- [ ] **Step 1: Write failing behavioral tests**
+- [x] **Step 1: Write failing behavioral tests**
 
 Create `tests/premium-agenda.test.cjs` that imports `.core-test-dist/core/agendaDay.js`, builds a minimal `FocoState`, and asserts:
 
@@ -52,11 +56,11 @@ assert.deepEqual(window, { startHour: 5, endHour: 24 });
 
 The fixture must include: a five-minute in-hours session, a 05:10 session before a configured 07:00 workday, a 23:20 session after a configured 22:00 workday, and a non-focus break session that must not appear.
 
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
 
 Run `npm test` through CI. Expected: compile/test failure because `agendaDay.ts` and exports do not yet exist.
 
-- [ ] **Step 3: Implement minimal pure projection**
+- [x] **Step 3: Implement minimal pure projection**
 
 `getAgendaSessionEvents` must:
 - include only `phase === 'focus'` sessions whose interval overlaps `[startOfLocalDay(day), endOfLocalDay(day))`;
@@ -75,7 +79,7 @@ Run `npm test` through CI. Expected: compile/test failure because `agendaDay.ts`
 
 Run `npm test`, `npm run typecheck`, `npm run lint`. Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Commit message: `feat: project real focus history into Agenda — B4.3C`
 
@@ -92,11 +96,11 @@ Commit message: `feat: project real focus history into Agenda — B4.3C`
 - Consumes: `AgendaSessionEvent`, `getAgendaSessionEvents`, `getAgendaTimelineWindow`.
 - Produces: a readable session block that displays actual time/duration and context without mutating data.
 
-- [ ] **Step 1: Extend regression test and verify RED**
+- [x] **Step 1: Extend regression test and verify RED**
 
 Add source assertions that `DayTimeline.tsx` imports `getAgendaSessionEvents` and `AgendaSessionBlock`, and no longer defines the legacy `sessionBar` with `width: 3`.
 
-- [ ] **Step 2: Implement `AgendaSessionBlock`**
+- [x] **Step 2: Implement `AgendaSessionBlock`**
 
 Render:
 - task title when present, otherwise `Sesión de enfoque`;
@@ -106,7 +110,7 @@ Render:
 
 Use Instrument Sans/theme tokens and keep minimum readable height even for five-minute sessions while retaining actual vertical position.
 
-- [ ] **Step 3: Update `DayTimeline`**
+- [x] **Step 3: Update `DayTimeline`**
 
 Replace local session filtering/3px bars with the pure agenda projection. Compute `startHour`/`endHour` from `getAgendaTimelineWindow`, position tasks/sessions against the derived window, and render sessions as absolute `AgendaSessionBlock`s in a dedicated lane that does not erase planned task blocks.
 
@@ -114,7 +118,7 @@ Replace local session filtering/3px bars with the pure agenda projection. Comput
 
 Run full tests, typecheck and lint. Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Commit message: `feat: show real focus sessions in Agenda timeline — B4.3C`
 
@@ -131,15 +135,15 @@ Commit message: `feat: show real focus sessions in Agenda timeline — B4.3C`
 - `MonthCalendar` adds `onOpenDay: (value: number) => void`.
 - `AgendaScreen` implements `openCalendarDay(value)` by setting `selectedDate`, synchronizing `monthAnchor` when needed, clearing search and setting mode to `Día`.
 
-- [ ] **Step 1: Add failing source contract**
+- [x] **Step 1: Add failing source contract**
 
 Require `MonthCalendar` to expose `onOpenDay`, keep `onSelect`, and implement an explicit same-day double-tap threshold without adding a new native dependency.
 
-- [ ] **Step 2: Implement single/double tap arbitration**
+- [x] **Step 2: Implement single/double tap arbitration**
 
 Use refs for the last tapped day/timestamp. A first tap immediately calls `onSelect(day.timestamp)`. A second tap on the same cell within a restrained threshold (about 280 ms) calls `onOpenDay(day.timestamp)` instead of issuing another selection action. Reset the stored tap after opening.
 
-- [ ] **Step 3: Wire AgendaScreen**
+- [x] **Step 3: Wire AgendaScreen**
 
 `onOpenDay` must select that exact local date and switch to `Día`; it must not create a task, alter persisted state or route away from Agenda.
 
@@ -147,7 +151,7 @@ Use refs for the last tapped day/timestamp. A first tap immediately calls `onSel
 
 Run tests/typecheck/lint. Confirm calendar cells retain radio semantics and labels.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Commit message: `feat: open Agenda day on calendar double tap — B4.3C`
 
@@ -163,11 +167,11 @@ Commit message: `feat: open Agenda day on calendar double tap — B4.3C`
 - Consumes existing `motion.fast` and `useReducedMotion`.
 - Produces a short in-place transition when Agenda mode changes without delaying interaction.
 
-- [ ] **Step 1: Add failing source contract**
+- [x] **Step 1: Add failing source contract**
 
 Require Agenda mode content to use the centralized motion foundation and a reduced-motion path.
 
-- [ ] **Step 2: Implement transition**
+- [x] **Step 2: Implement transition**
 
 Wrap the active Agenda mode content in a focused animated container using a short fade/slight directional offset derived from `motion.fast`; disable decorative movement when reduced motion is enabled. Do not animate the header/search controls.
 
@@ -175,7 +179,7 @@ Wrap the active Agenda mode content in a focused animated container using a shor
 
 Run tests, typecheck and lint.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 Commit message: `feat: soften Agenda mode transitions — B4.3C`
 
@@ -192,7 +196,7 @@ Commit message: `feat: soften Agenda mode transitions — B4.3C`
 - [ ] Run Expo Doctor.
 - [ ] Export Android bundle through CI.
 - [ ] Confirm no `FocoStore`, migration, reminder or notification diff.
-- [ ] Keep B4.3C PR stacked on `feature/foco-premium-navigation-b4-3b` until PR #22 passes Samsung review and merges; then retarget/rebase without force push.
+- [ ] Keep B4.3C unmerged until PR #22 passes Samsung review and merges; then retarget/rebase without force push if needed.
 - [ ] Update Drive REGISTRO with each recognizable B4.3C checkpoint and keep ESTADO truthful about the B4.3B physical gate.
 
 ## Acceptance Criteria
