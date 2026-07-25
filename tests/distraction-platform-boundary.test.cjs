@@ -3,7 +3,7 @@ const test = require('node:test');
 
 const {
   resolveDistractionMonitoringStatus,
-} = require('../.core-test-dist/core/distractionDetection.js');
+} = require('../.core-test-dist/core/distractionPlatform.js');
 
 test('reports unsupported platforms without requesting sensitive access', () => {
   assert.deepEqual(
@@ -31,6 +31,22 @@ test('keeps Android monitoring blocked until Usage Access is granted', () => {
     {
       supported: true,
       permission: 'denied',
+      monitoringAllowed: false,
+      reason: 'permission-required',
+    },
+  );
+});
+
+test('keeps unknown Android permission state blocked and explicit', () => {
+  assert.deepEqual(
+    resolveDistractionMonitoringStatus({
+      platform: 'android',
+      usageStatsAvailable: true,
+      usageAccess: 'unknown',
+    }),
+    {
+      supported: true,
+      permission: 'unknown',
       monitoringAllowed: false,
       reason: 'permission-required',
     },
