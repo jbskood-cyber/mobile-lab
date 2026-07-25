@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const tabBarPath = path.join(process.cwd(), 'src', 'ui', 'FocoTabBar.tsx');
+const tabsLayoutPath = path.join(process.cwd(), 'app', '(tabs)', '_layout.tsx');
 const premiumPath = path.join(process.cwd(), 'src', 'ui', 'premium.ts');
 const pressablePath = path.join(process.cwd(), 'src', 'ui', 'FocoPressable.tsx');
 const motionPath = path.join(process.cwd(), 'src', 'ui', 'motion.ts');
@@ -58,6 +59,14 @@ test('motion foundation centralizes semantic timings and reduced-motion resoluti
     assert.match(motion, new RegExp(token));
   }
   assert.match(motion, /resolveMotionDuration/);
+});
+
+test('tab scenes use a restrained crossfade instead of snapping', () => {
+  const layout = read(tabsLayoutPath);
+  assert.doesNotMatch(layout, /animation:\s*'none'/);
+  assert.match(layout, /animation:\s*'fade'/);
+  assert.match(layout, /transitionSpec/);
+  assert.match(layout, /motion\.fast|motionDurations\.fast/);
 });
 
 test('typography foundation exposes semantic roles and stable numeric variants', () => {
