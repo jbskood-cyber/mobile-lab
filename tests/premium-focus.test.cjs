@@ -16,6 +16,9 @@ const {
 } = require('../.core-test-dist/core/focusTimer.js');
 
 const hookSource = fs.readFileSync(path.join(__dirname, '../src/core/useFocusTimer.ts'), 'utf8');
+const focusScreenSource = fs.readFileSync(path.join(__dirname, '../src/features/focus/FocusScreen.tsx'), 'utf8');
+const selectorSource = fs.readFileSync(path.join(__dirname, '../src/features/focus/FocusModeSelector.tsx'), 'utf8');
+const presetSource = fs.readFileSync(path.join(__dirname, '../src/features/focus/TimerPresetSheet.tsx'), 'utf8');
 
 test('free countdown timer has its own deterministic duration and does not change Pomodoro semantics', () => {
   const runtime = createFocusRuntime();
@@ -59,4 +62,31 @@ test('timer runtime hydration and lifecycle remain backward-compatible', () => {
   assert.match(hookSource, /completed: true/);
   assert.match(hookSource, /interrupted: false/);
   assert.match(hookSource, /setMessage\(\{ text: 'Sesión guardada\.'/);
+});
+
+test('Focus exposes exactly Pomodoro, Timer and Stopwatch without a permanent preset grid', () => {
+  assert.match(selectorSource, /mode: 'pomodoro', label: 'Pomodoro'/);
+  assert.match(selectorSource, /mode: 'timer', label: 'Temporizador'/);
+  assert.match(selectorSource, /mode: 'stopwatch', label: 'Cronómetro'/);
+  assert.match(selectorSource, /Pomodoro · \$\{pomodoroMinutes\} min/);
+  assert.match(selectorSource, /Temporizador · \$\{timerMinutes\} min/);
+  assert.match(selectorSource, /disabled=\{disabled\}/);
+  assert.match(focusScreenSource, /<FocusModeSelector/);
+  assert.match(focusScreenSource, /onConfigureTimer=\{\(\) => setTimerPresetOpen\(true\)\}/);
+  assert.doesNotMatch(focusScreenSource, /\[5,\s*10,\s*15,\s*25,\s*45,\s*60\]/);
+});
+
+test('Timer presets stay compact and do not mutate Pomodoro preferences', () => {
+  assert.match(presetSource, /\[5, 10, 15, 25, 45, 60\]/);
+  assert.match(presetSource, /parseOptionalInteger\(draft, 1, 180\)/);
+  assert.match(presetSource, /onApply\(parsed\)/);
+  assert.match(focusScreenSource, /timer\.configure\(\{ timerSeconds: minutes \* 60 \}\)/);
+  assert.doesNotMatch(focusScreenSource, /timer\.configure\(\{ timerSeconds: minutes \* 60 \},\s*\{/);
+});
+
+test('countdown UI keeps restrained completion and accessible numeric feedback', () => {
+  assert.match(focusScreenSource, /accessibilityLiveRegion="polite"/);
+  assert.match(focusScreenSource, /fontVariant: \['tabular-nums'\]/);
+  assert.match(hookSource, /setMessage\(\{ text: 'Sesión guardada\.'/);
+  assert.doesNotMatch(focusScreenSource + hookSource, /confetti|mascot|celebrat/i);
 });
