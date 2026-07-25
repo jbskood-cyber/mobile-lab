@@ -12,6 +12,10 @@ const todaySource = source('src/features/today/TodayScreen.tsx');
 const inboxSource = source('src/features/inbox/InboxSheet.tsx');
 const skeletonSource = source('src/ui/FocoSkeleton.tsx');
 const skeletonPulseSource = source('src/ui/FocoSkeletonPulse.tsx');
+const sheetSource = source('src/ui/FocoSheet.tsx');
+const uiContextSource = source('src/ui/FocoUIContext.tsx');
+const tabBarSource = source('src/ui/FocoTabBar.tsx');
+const packageSource = source('package.json');
 
 test('FOCO owns one abstract empty-state primitive without mascot or stock-art language', () => {
   assert.match(emptyStateSource, /export function FocoEmptyState/);
@@ -48,4 +52,17 @@ test('loading uses one quiet reduced-motion-aware pulse and keeps content-shaped
   assert.match(skeletonSource, /ProjectsSkeleton/);
   assert.match(skeletonSource, /FocusSkeleton/);
   assert.match(skeletonSource, /StatsSkeleton/);
+});
+
+test('shared sheets already keep keyboard, footer and dismiss behavior polished without another dependency', () => {
+  assert.match(sheetSource, /KeyboardAvoidingView/);
+  assert.match(sheetSource, /behavior=\{Platform\.OS === 'ios' \? 'padding' : 'height'\}/);
+  assert.match(sheetSource, /keyboardShouldPersistTaps="handled"/);
+  assert.match(sheetSource, /keyboardDismissMode=\{Platform\.OS === 'ios' \? 'interactive' : 'on-drag'\}/);
+  assert.match(sheetSource, /Keyboard\.dismiss\(\)/);
+  assert.ok(sheetSource.indexOf('</ScrollView>') < sheetSource.indexOf('{footer ? <View style={styles.footer}>'));
+  assert.match(uiContextSource, /Keyboard\.addListener\('keyboardDidShow'/);
+  assert.match(uiContextSource, /Keyboard\.addListener\('keyboardDidHide'/);
+  assert.match(tabBarSource, /keyboardVisible/);
+  assert.doesNotMatch(packageSource, /keyboard-controller|keyboard-aware-scroll-view/i);
 });
