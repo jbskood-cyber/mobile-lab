@@ -1,11 +1,11 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FocoIcon, type IconName } from './FocoIcon';
+import { FocoPressable } from './FocoPressable';
 import { useFocoTheme } from './FocoThemeContext';
 import { useFocoUI } from './FocoUIContext';
-import { pressFeedback } from './premium';
 import { fontFamilies, typeScale } from './themeTokens';
 
 const routeMeta: Record<string, { label: string; icon: IconName }> = {
@@ -37,14 +37,15 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
             else navigation.navigate(route.name);
           };
           return (
-            <Pressable
+            <FocoPressable
               key={route.key}
+              feedback="quiet"
               accessibilityRole="tab"
               accessibilityState={{ selected: focused }}
               accessibilityLabel={options?.tabBarAccessibilityLabel ?? meta.label}
               onPress={onPress}
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-              style={({ pressed }) => [styles.item, pressed && pressFeedback.quiet]}
+              style={styles.item}
             >
               <FocoIcon
                 name={meta.icon}
@@ -54,7 +55,7 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
               />
               <Text style={[typeScale.caption, { color: focused ? theme.colors.text : theme.colors.inactive, fontFamily: focused ? fontFamilies.semibold : fontFamilies.medium }]} maxFontSizeMultiplier={1.08}>{meta.label}</Text>
               {focused ? <View style={{ position: 'absolute', top: 0, width: 20, height: 2, borderRadius: 1, backgroundColor: theme.colors.accent }} /> : null}
-            </Pressable>
+            </FocoPressable>
           );
         })}
       </View>
