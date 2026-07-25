@@ -95,6 +95,20 @@ export const fontFamilies = {
   bold: 'Manrope_700Bold',
 } as const;
 
+const tabularNumbers = ['tabular-nums'] as const;
+
+export const typeScale = {
+  display: { fontFamily: fontFamilies.semibold, fontSize: 30, lineHeight: 35, letterSpacing: -0.8 },
+  screenTitle: { fontFamily: fontFamilies.semibold, fontSize: 22, lineHeight: 27, letterSpacing: -0.45 },
+  section: { fontFamily: fontFamilies.semibold, fontSize: 15, lineHeight: 20, letterSpacing: -0.12 },
+  body: { fontFamily: fontFamilies.regular, fontSize: 13.5, lineHeight: 19, letterSpacing: -0.04 },
+  metadata: { fontFamily: fontFamilies.medium, fontSize: 11, lineHeight: 15, letterSpacing: 0.02 },
+  caption: { fontFamily: fontFamilies.medium, fontSize: 9.5, lineHeight: 13, letterSpacing: 0.12 },
+  metric: { fontFamily: fontFamilies.semibold, fontSize: 17, lineHeight: 21, letterSpacing: -0.25, fontVariant: ['tabular-nums'] as const },
+  timer: { fontFamily: fontFamilies.regular, fontSize: 48, lineHeight: 56, letterSpacing: -1.65, fontVariant: ['tabular-nums'] as const },
+  control: { fontFamily: fontFamilies.semibold, fontSize: 11, lineHeight: 15, letterSpacing: 0.04 },
+} as const;
+
 export function getThemeTokens(theme: ResolvedTheme) {
   return {
     mode: theme,
@@ -103,6 +117,7 @@ export function getThemeTokens(theme: ResolvedTheme) {
     space: { xs: 3, sm: 6, md: 10, lg: 14, xl: 18, xxl: 22, xxxl: 28 },
     density,
     fonts: fontFamilies,
+    type: typeScale,
   } as const;
 }
 
