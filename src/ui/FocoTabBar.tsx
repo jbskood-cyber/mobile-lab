@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FocoIcon, type IconName } from './FocoIcon';
 import { useFocoTheme } from './FocoThemeContext';
 import { useFocoUI } from './FocoUIContext';
-import { hapticSelection, pressedStyle } from './premium';
+import { pressedStyle } from './premium';
 import { fontFamilies } from './themeTokens';
 
 const routeMeta: Record<string, { label: string; icon: IconName }> = {
@@ -33,7 +33,6 @@ export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps
           const onPress = () => {
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (event.defaultPrevented) return;
-            hapticSelection();
             if (focused) scrollToTop(route.name);
             else navigation.navigate(route.name);
           };
