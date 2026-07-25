@@ -7,6 +7,7 @@ import { useFocoUI } from '@/src/ui/FocoUIContext';
 import { hapticImpact, hapticSelection, hapticSuccess, hapticWarning } from '@/src/ui/premium';
 import { useFocoStore } from './FocoStore';
 import {
+  DEFAULT_TIMER_SECONDS,
   advancePomodoro,
   configureTimer,
   createFocusRuntime,
@@ -20,6 +21,7 @@ import {
   startTimer,
   type FocusRuntime,
   type TimerConfiguration,
+  type TimerMode,
 } from './focusTimer';
 import type { FocusMode, FocusPreferences, FocusPhase } from './model';
 
@@ -33,10 +35,11 @@ function normalizeRuntime(value: unknown, preferences: FocusPreferences): FocusR
   const fallback = createFocusRuntime(preferences);
   if (!value || typeof value !== 'object') return fallback;
   const candidate = value as StoredRuntime;
-  const mode: FocusMode = candidate.mode === 'stopwatch' ? 'stopwatch' : 'pomodoro';
+  const mode: TimerMode = candidate.mode === 'timer' ? 'timer' : candidate.mode === 'stopwatch' ? 'stopwatch' : 'pomodoro';
   const phase: FocusPhase = candidate.phase === 'longBreak' ? 'longBreak' : candidate.phase === 'shortBreak' || candidate.phase === 'break' ? 'shortBreak' : 'focus';
   const runtime = configureTimer(fallback, {
     focusSeconds: candidate.focusSeconds,
+    timerSeconds: candidate.timerSeconds ?? DEFAULT_TIMER_SECONDS,
     shortBreakSeconds: candidate.shortBreakSeconds ?? candidate.breakSeconds,
     longBreakSeconds: candidate.longBreakSeconds,
     longBreakEvery: candidate.longBreakEvery,
@@ -48,6 +51,7 @@ function normalizeRuntime(value: unknown, preferences: FocusPreferences): FocusR
     taskId: candidate.taskId,
   });
   const phaseTotal = phase === 'focus' ? runtime.focusSeconds : phase === 'longBreak' ? runtime.longBreakSeconds : runtime.shortBreakSeconds;
+  const fallbackBase = mode === 'stopwatch' ? 0 : mode === 'timer' ? runtime.timerSeconds : phaseTotal;
   return {
     ...runtime,
     mode,
@@ -55,7 +59,7 @@ function normalizeRuntime(value: unknown, preferences: FocusPreferences): FocusR
     currentCycle: Math.max(1, Math.min(runtime.targetCycles, Math.round(candidate.currentCycle ?? 1))),
     running: Boolean(candidate.running),
     anchorMs: Math.max(0, Number(candidate.anchorMs ?? 0)),
-    baseSeconds: Math.max(0, Number(candidate.baseSeconds ?? (mode === 'stopwatch' ? 0 : phaseTotal))),
+    baseSeconds: Math.max(0, Number(candidate.baseSeconds ?? fallbackBase)),
   };
 }
 
@@ -63,6 +67,10 @@ function phaseCopy(phase: FocusPhase) {
   if (phase === 'focus') return { completeTitle: 'Bloque completado', completeBody: 'Es momento de descansar.', warning: 'Tu bloque termina pronto.' };
   if (phase === 'longBreak') return { completeTitle: 'Descanso largo completado', completeBody: 'Vuelve con energía a tu siguiente bloque.', warning: 'El descanso largo termina pronto.' };
   return { completeTitle: 'Descanso completado', completeBody: 'Tu siguiente bloque está listo.', warning: 'El descanso termina pronto.' };
+}
+
+function timerCopy() {
+  return { completeTitle: 'Temporizador completado', completeBody: 'Tu sesión quedó registrada.', warning: 'Tu temporizador termina pronto.' };
 }
 
 export function useFocusTimer(projectId: string, taskId?: string) {
@@ -152,9 +160,9 @@ export function useFocusTimer(projectId: string, taskId?: string) {
       if (warningNotification.current) await cancelScheduledNotification(warningNotification.current);
       completeNotification.current = undefined;
       warningNotification.current = undefined;
-      if (!runtime.running) return;
+      if (!runtime.running || runtime.mode === 'stopwatch') return;
       const remaining = getTimerSeconds(runtime, Date.now());
-      const copy = phaseCopy(runtime.phase);
+      const copy = runtime.mode === 'timer' ? timerCopy() : phaseCopy(runtime.phase);
       const completeId = await scheduleFocusPhaseNotification(remaining, copy.completeTitle, copy.completeBody, { phase: runtime.phase, taskId: runtime.taskId, projectId: runtime.projectId });
       const warningSec = state.preferences.notifyBeforeEndMinutes * 60;
       const warningId = warningSec > 0 && remaining > warningSec
@@ -169,16 +177,39 @@ export function useFocusTimer(projectId: string, taskId?: string) {
       }
     })();
     return () => { cancelled = true; };
-  }, [runtime.anchorMs, runtime.phase, runtime.projectId, runtime.running, runtime.taskId, state.preferences.notifyBeforeEndMinutes]);
+  }, [runtime.anchorMs, runtime.mode, runtime.phase, runtime.projectId, runtime.running, runtime.taskId, state.preferences.notifyBeforeEndMinutes]);
 
   const seconds = getTimerSeconds(runtime, now);
   const progress = getTimerProgress(runtime, now);
 
   useEffect(() => {
-    if (!ready || !runtime.running || runtime.mode !== 'pomodoro' || seconds > 0) return;
+    if (!ready || !runtime.running || runtime.mode === 'stopwatch' || seconds > 0) return;
     if (runtime.anchorMs > 0 && lastCompletedAnchor.current === runtime.anchorMs) return;
     lastCompletedAnchor.current = runtime.anchorMs;
     const endedAt = Date.now();
+
+    if (runtime.mode === 'timer') {
+      const plannedSec = runtime.timerSeconds;
+      addSession({
+        projectId: runtime.projectId ?? projectId,
+        taskId: runtime.taskId,
+        mode: 'timer' as FocusMode,
+        phase: 'focus',
+        startedAt: endedAt - plannedSec * 1000,
+        endedAt,
+        durationSec: plannedSec,
+        plannedSec,
+        completed: true,
+        interrupted: false,
+        cycleNumber: 1,
+      });
+      setMessage({ text: 'Sesión guardada.', tone: 'success' });
+      hapticSuccess();
+      setRuntime((current) => resetTimer({ ...current, running: false, baseSeconds: 0, anchorMs: 0 }));
+      setNow(endedAt);
+      return;
+    }
+
     const plannedSec = getPhaseTotalSeconds(runtime);
     addSession({
       projectId: runtime.projectId ?? projectId,
@@ -224,7 +255,7 @@ export function useFocusTimer(projectId: string, taskId?: string) {
         startedAt: endedAt - durationSec * 1000,
         endedAt,
         durationSec,
-        plannedSec: runtime.mode === 'stopwatch' ? Math.max(durationSec, runtime.focusSeconds) : getPhaseTotalSeconds(runtime),
+        plannedSec: runtime.mode === 'stopwatch' ? Math.max(durationSec, runtime.focusSeconds) : runtime.mode === 'timer' ? runtime.timerSeconds : getPhaseTotalSeconds(runtime),
         completed: false,
         interrupted: true,
         cycleNumber: runtime.currentCycle,
@@ -246,7 +277,7 @@ export function useFocusTimer(projectId: string, taskId?: string) {
     hapticSelection();
   }, []);
 
-  const changeMode = useCallback((mode: FocusMode) => {
+  const changeMode = useCallback((mode: TimerMode) => {
     setRuntime((current) => setTimerMode(current, mode));
     setNow(Date.now());
     setMessage(null);
@@ -265,7 +296,7 @@ export function useFocusTimer(projectId: string, taskId?: string) {
     const timestamp = Date.now();
     setRuntime((current) => current.mode === 'pomodoro' ? advancePomodoro(pauseTimer(current, timestamp), timestamp) : resetTimer(current));
     setNow(timestamp);
-    setMessage({ text: runtime.mode === 'pomodoro' ? 'Fase omitida.' : 'Cronómetro reiniciado.', tone: 'neutral' });
+    setMessage({ text: runtime.mode === 'pomodoro' ? 'Fase omitida.' : runtime.mode === 'timer' ? 'Temporizador reiniciado.' : 'Cronómetro reiniciado.', tone: 'neutral' });
     hapticSelection();
   }, [runtime.mode]);
 
