@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const tabBarPath = path.join(process.cwd(), 'src', 'ui', 'FocoTabBar.tsx');
+const tabItemPath = path.join(process.cwd(), 'src', 'ui', 'FocoTabItem.tsx');
 const tabsLayoutPath = path.join(process.cwd(), 'app', '(tabs)', '_layout.tsx');
 const premiumPath = path.join(process.cwd(), 'src', 'ui', 'premium.ts');
 const pressablePath = path.join(process.cwd(), 'src', 'ui', 'FocoPressable.tsx');
@@ -112,12 +113,14 @@ test('no app source references the removed Manrope runtime family', () => {
 test('navigation icons use one professional family with explicit active weight', () => {
   const icon = read(iconPath);
   const tabBar = read(tabBarPath);
+  const tabItem = read(tabItemPath);
   assert.match(icon, /PHOSPHOR_NAV_ICONS/);
   assert.match(icon, /weight\?:\s*'regular'\s*\|\s*'fill'/);
   for (const iconName of ['home', 'calendar', 'circle', 'folder', 'bars']) {
     assert.match(icon, new RegExp(`${iconName}:`));
   }
-  assert.match(tabBar, /weight=\{focused \? 'fill' : 'regular'\}/);
+  assert.match(tabBar, /<FocoTabItem/);
+  assert.match(tabItem, /weight=\{focused \? 'fill' : 'regular'\}/);
 });
 
 test('primary shared controls use the same Phosphor icon language', () => {
