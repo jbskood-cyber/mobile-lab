@@ -7,6 +7,8 @@ const { createInitialState, startOfLocalDay } = require('../.core-test-dist/core
 const { getAgendaSessionEvents, getAgendaTimelineWindow } = require('../.core-test-dist/core/agendaDay.js');
 
 const timelinePath = path.join(process.cwd(), 'src', 'features', 'agenda', 'DayTimeline.tsx');
+const monthCalendarPath = path.join(process.cwd(), 'src', 'features', 'agenda', 'MonthCalendar.tsx');
+const agendaScreenPath = path.join(process.cwd(), 'src', 'features', 'agenda', 'AgendaScreen.tsx');
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -89,4 +91,18 @@ test('Day timeline renders real sessions as readable event blocks instead of 3px
   assert.doesNotMatch(source, /width:\s*3/);
   assert.match(source, /Plan/);
   assert.match(source, /Real/);
+});
+
+test('Monthly calendar supports single select and same-day double tap to exact Day mode', () => {
+  const month = read(monthCalendarPath);
+  const agenda = read(agendaScreenPath);
+  assert.match(month, /onOpenDay/);
+  assert.match(month, /lastTap/);
+  assert.match(month, /280/);
+  assert.match(month, /onSelect\(day\.timestamp\)/);
+  assert.match(month, /onOpenDay\(day\.timestamp\)/);
+  assert.match(agenda, /openCalendarDay/);
+  assert.match(agenda, /setSelectedDate\(value\)/);
+  assert.match(agenda, /setMode\('Día'\)/);
+  assert.match(agenda, /onOpenDay=\{openCalendarDay\}/);
 });
