@@ -15,6 +15,17 @@ function read(file) {
   return fs.readFileSync(file, 'utf8');
 }
 
+function sourceFiles(root) {
+  const matches = [];
+  if (!fs.existsSync(root)) return matches;
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const absolute = path.join(root, entry.name);
+    if (entry.isDirectory()) matches.push(...sourceFiles(absolute));
+    else if (/\.(?:ts|tsx|js|jsx)$/.test(entry.name)) matches.push(absolute);
+  }
+  return matches;
+}
+
 test('routine bottom-tab navigation does not trigger selection haptics', () => {
   const source = read(tabBarPath);
   assert.doesNotMatch(source, /hapticSelection\s*\(/, 'Bottom-tab navigation must stay haptic-free; reserve haptics for meaningful actions.');
@@ -59,6 +70,12 @@ test('premium typography loads Instrument Sans with real weights', () => {
   }
   assert.doesNotMatch(layout, /Manrope_/);
   assert.doesNotMatch(theme, /Manrope_/);
+});
+
+test('no app source references the removed Manrope runtime family', () => {
+  const roots = [path.join(process.cwd(), 'app'), path.join(process.cwd(), 'src')];
+  const legacy = roots.flatMap(sourceFiles).filter((file) => /Manrope_/.test(read(file))).map((file) => path.relative(process.cwd(), file));
+  assert.deepEqual(legacy, [], `Legacy Manrope font references remain in: ${legacy.join(', ')}`);
 });
 
 test('navigation icons use one professional family with explicit active weight', () => {
