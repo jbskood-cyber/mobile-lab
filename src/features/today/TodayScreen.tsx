@@ -9,6 +9,7 @@ import { InboxSheet } from '@/src/features/inbox/InboxSheet';
 import { ReplanSheet } from '@/src/features/replan/ReplanSheet';
 import { TaskEditorSheet } from '@/src/features/tasks/TaskEditorSheet';
 import { TaskRow } from '@/src/features/tasks/TaskRow';
+import { FocoEmptyState } from '@/src/ui/FocoEmptyState';
 import { FocoIcon } from '@/src/ui/FocoIcon';
 import { FocoScreen, SectionTitle } from '@/src/ui/FocoShell';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
@@ -91,10 +92,10 @@ export function TodayScreen() {
             <View style={styles.nextCopy}><Text style={[styles.nextTitle, { color: theme.colors.text }]} numberOfLines={2}>{momentum.title}</Text><Text style={[styles.nextMeta, { color: theme.colors.muted }]}>{momentum.firstStep || `${momentum.durationMinutes} min · ${momentum.estimatedPomodoros} foco`}</Text></View>
             <View style={[styles.focusButton, { backgroundColor: theme.colors.inverse }]}><FocoIcon name="play" size={20} color={theme.colors.inverseText} /></View>
           </Pressable>
-        ) : <Empty title="Tu día está despejado" copy="Captura una idea o planifica algo desde Agenda." />}
+        ) : <FocoEmptyState compact state="clear" title="Tu día está despejado" copy="Captura una idea o planifica algo desde Agenda." />}
 
         <SectionTitle title="Planificado" detail={String(plan.scheduled.length)} />
-        {plan.scheduled.length > 0 ? renderRows(plan.scheduled) : <Empty title="Sin bloques fijos" copy="Agenda una hora concreta para verla aquí." />}
+        {plan.scheduled.length > 0 ? renderRows(plan.scheduled) : <FocoEmptyState compact state="clear" title="Sin bloques fijos" copy="Agenda una hora concreta para verla aquí." />}
         {plan.flexible.length > 0 ? <><SectionTitle title="Flexible" detail={String(plan.flexible.length)} />{renderRows(plan.flexible)}</> : null}
         {completedToday.length > 0 ? <><SectionTitle title="Completadas" detail={String(completedToday.length)} />{renderRows(completedToday)}</> : null}
       </FocoScreen>
@@ -103,11 +104,6 @@ export function TodayScreen() {
       <ReplanSheet visible={replanOpen} onClose={() => setReplanOpen(false)} onOpenTask={(task) => { setReplanOpen(false); openTask(task); }} />
     </>
   );
-}
-
-function Empty({ title, copy }: { title: string; copy: string }) {
-  const theme = useFocoTheme();
-  return <View style={[styles.empty, { borderBottomColor: theme.colors.borderSoft }]}><Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{title}</Text><Text style={[styles.emptyCopy, { color: theme.colors.muted }]}>{copy}</Text></View>;
 }
 
 const styles = StyleSheet.create({
@@ -134,7 +130,4 @@ const styles = StyleSheet.create({
   nextTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 15.5, lineHeight: 20 },
   nextMeta: { fontFamily: 'InstrumentSans_400Regular', fontSize: 10.5, lineHeight: 14, marginTop: 3 },
   focusButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  empty: { minHeight: 74, alignItems: 'center', justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 18 },
-  emptyTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13.5, lineHeight: 18 },
-  emptyCopy: { fontFamily: 'InstrumentSans_400Regular', fontSize: 10.5, lineHeight: 14, textAlign: 'center', marginTop: 3 },
 });
