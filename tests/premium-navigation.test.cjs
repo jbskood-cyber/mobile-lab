@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const tabBarPath = path.join(process.cwd(), 'src', 'ui', 'FocoTabBar.tsx');
+const tabItemPath = path.join(process.cwd(), 'src', 'ui', 'FocoTabItem.tsx');
+const tabsLayoutPath = path.join(process.cwd(), 'app', '(tabs)', '_layout.tsx');
 const premiumPath = path.join(process.cwd(), 'src', 'ui', 'premium.ts');
 const pressablePath = path.join(process.cwd(), 'src', 'ui', 'FocoPressable.tsx');
 const motionPath = path.join(process.cwd(), 'src', 'ui', 'motion.ts');
@@ -60,6 +62,26 @@ test('motion foundation centralizes semantic timings and reduced-motion resoluti
   assert.match(motion, /resolveMotionDuration/);
 });
 
+test('tab scenes use a restrained crossfade instead of snapping', () => {
+  const layout = read(tabsLayoutPath);
+  assert.doesNotMatch(layout, /animation:\s*'none'/);
+  assert.match(layout, /animation:\s*'fade'/);
+  assert.match(layout, /transitionSpec/);
+  assert.match(layout, /motion\.fast|motionDurations\.fast/);
+});
+
+test('bottom navigation uses one moving active indicator with reduced-motion fallback', () => {
+  const tabBar = read(tabBarPath);
+  assert.match(tabBar, /useSharedValue/);
+  assert.match(tabBar, /useAnimatedStyle/);
+  assert.match(tabBar, /withTiming/);
+  assert.match(tabBar, /useReducedMotion/);
+  assert.match(tabBar, /Animated\.View/);
+  assert.match(tabBar, /activeIndicator/);
+  assert.match(tabBar, /pointerEvents="none"/);
+  assert.doesNotMatch(tabBar, /focused\s*\?\s*<View[^>]+top:\s*0[^>]+backgroundColor:\s*theme\.colors\.accent/s);
+});
+
 test('typography foundation exposes semantic roles and stable numeric variants', () => {
   const theme = read(themeTokensPath);
   assert.match(theme, /typeScale/);
@@ -91,18 +113,20 @@ test('no app source references the removed Manrope runtime family', () => {
 test('navigation icons use one professional family with explicit active weight', () => {
   const icon = read(iconPath);
   const tabBar = read(tabBarPath);
+  const tabItem = read(tabItemPath);
   assert.match(icon, /PHOSPHOR_NAV_ICONS/);
   assert.match(icon, /weight\?:\s*'regular'\s*\|\s*'fill'/);
   for (const iconName of ['home', 'calendar', 'circle', 'folder', 'bars']) {
     assert.match(icon, new RegExp(`${iconName}:`));
   }
-  assert.match(tabBar, /weight=\{focused \? 'fill' : 'regular'\}/);
+  assert.match(tabBar, /<FocoTabItem/);
+  assert.match(tabItem, /weight=\{focused \? 'fill' : 'regular'\}/);
 });
 
 test('primary shared controls use the same Phosphor icon language', () => {
   const icon = read(iconPath);
   assert.match(icon, /PHOSPHOR_CONTROL_ICONS/);
   for (const iconName of ['plus', 'sliders', 'play', 'pause', 'stop', 'more', 'chevron-right', 'chevron-left', 'chevron-down', 'search', 'check']) {
-    assert.match(icon, new RegExp(`['\"]?${iconName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\"]?\s*:`));
+    assert.match(icon, new RegExp(`['"]?${iconName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]?\s*:`));
   }
 });
