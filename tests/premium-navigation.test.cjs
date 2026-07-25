@@ -40,13 +40,14 @@ test('premium press feedback exposes restrained semantic variants', () => {
   assert.match(premium, /control/);
   assert.match(premium, /primary/);
   assert.doesNotMatch(premium, /opacity:\s*0\.72/);
-  assert.match(tabBar, /pressFeedback\.quiet/);
+  assert.match(tabBar, /feedback="quiet"/);
 });
 
 test('shared premium press primitive respects reduced motion', () => {
   const source = read(pressablePath);
   assert.match(source, /useReducedMotion/);
-  assert.match(source, /feedback\?:\s*'quiet'\s*\|\s*'control'\s*\|\s*'primary'/);
+  assert.match(source, /feedback\?:\s*Feedback/);
+  assert.match(source, /type Feedback = 'quiet' \| 'control' \| 'primary'/);
   assert.match(source, /reducedMotion/);
   assert.match(source, /pressFeedback\[feedback\]/);
 });
