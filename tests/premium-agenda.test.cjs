@@ -1,8 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const { createInitialState, startOfLocalDay } = require('../.core-test-dist/core/model.js');
 const { getAgendaSessionEvents, getAgendaTimelineWindow } = require('../.core-test-dist/core/agendaDay.js');
+
+const timelinePath = path.join(process.cwd(), 'src', 'features', 'agenda', 'DayTimeline.tsx');
+
+function read(file) {
+  return fs.readFileSync(file, 'utf8');
+}
 
 function at(day, hour, minute = 0) {
   const value = new Date(day);
@@ -70,4 +78,15 @@ test('Agenda includes a focus session when its interval overlaps the selected lo
   assert.equal(events[0].sessionId, 'cross-midnight');
   assert.equal(events[0].startedAt, before);
   assert.equal(events[0].endedAt, after);
+});
+
+test('Day timeline renders real sessions as readable event blocks instead of 3px markers', () => {
+  const source = read(timelinePath);
+  assert.match(source, /getAgendaSessionEvents/);
+  assert.match(source, /getAgendaTimelineWindow/);
+  assert.match(source, /AgendaSessionBlock/);
+  assert.doesNotMatch(source, /sessionBar/);
+  assert.doesNotMatch(source, /width:\s*3/);
+  assert.match(source, /Plan/);
+  assert.match(source, /Real/);
 });
