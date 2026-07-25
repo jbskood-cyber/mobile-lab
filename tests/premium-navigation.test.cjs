@@ -8,6 +8,8 @@ const premiumPath = path.join(process.cwd(), 'src', 'ui', 'premium.ts');
 const motionPath = path.join(process.cwd(), 'src', 'ui', 'motion.ts');
 const themeTokensPath = path.join(process.cwd(), 'src', 'ui', 'themeTokens.ts');
 const iconPath = path.join(process.cwd(), 'src', 'ui', 'FocoIcon.tsx');
+const packagePath = path.join(process.cwd(), 'package.json');
+const layoutPath = path.join(process.cwd(), 'app', '_layout.tsx');
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -44,6 +46,19 @@ test('typography foundation exposes semantic roles and stable numeric variants',
     assert.match(theme, new RegExp(`${role}:`));
   }
   assert.match(theme, /fontVariant:\s*\['tabular-nums'\]/);
+});
+
+test('premium typography loads Instrument Sans with real weights', () => {
+  const packageJson = read(packagePath);
+  const layout = read(layoutPath);
+  const theme = read(themeTokensPath);
+  assert.match(packageJson, /@expo-google-fonts\/instrument-sans/);
+  for (const weight of ['400Regular', '500Medium', '600SemiBold', '700Bold']) {
+    assert.match(layout, new RegExp(`InstrumentSans_${weight}`));
+    assert.match(theme, new RegExp(`InstrumentSans_${weight}`));
+  }
+  assert.doesNotMatch(layout, /Manrope_/);
+  assert.doesNotMatch(theme, /Manrope_/);
 });
 
 test('navigation icons use one professional family with explicit active weight', () => {
