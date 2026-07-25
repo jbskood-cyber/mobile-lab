@@ -56,3 +56,11 @@ test('navigation icons use one professional family with explicit active weight',
   }
   assert.match(tabBar, /weight=\{focused \? 'fill' : 'regular'\}/);
 });
+
+test('primary shared controls use the same Phosphor icon language', () => {
+  const icon = read(iconPath);
+  assert.match(icon, /PHOSPHOR_CONTROL_ICONS/);
+  for (const iconName of ['plus', 'sliders', 'play', 'pause', 'stop', 'more', 'chevron-right', 'chevron-left', 'chevron-down', 'search', 'check']) {
+    assert.match(icon, new RegExp(`['\"]?${iconName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\"]?\s*:`));
+  }
+});
