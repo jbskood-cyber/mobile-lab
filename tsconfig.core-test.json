@@ -23,6 +23,7 @@
     "src/core/calendar.ts",
     "src/core/backup.ts",
     "src/core/distractionDetection.ts",
+    "src/core/distractionPlatform.ts",
     "src/ui/themeModel.ts",
     "src/platform/reminderModel.ts",
     "src/ui/uiState.ts",
