@@ -219,7 +219,7 @@ export function useFocusTimer(projectId: string, taskId?: string) {
       addSession({
         projectId: runtime.projectId ?? projectId,
         taskId: runtime.taskId,
-        mode: runtime.mode,
+        mode: runtime.mode as FocusMode,
         phase: runtime.phase,
         startedAt: endedAt - durationSec * 1000,
         endedAt,
