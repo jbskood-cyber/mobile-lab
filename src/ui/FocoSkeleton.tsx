@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { StyleSheet, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FocoSkeletonPulse } from './FocoSkeletonPulse';
 import { getThemeTokens, type FocoTheme } from './themeTokens';
 
 type Screen = 'today' | 'agenda' | 'projects' | 'focus' | 'stats';
@@ -11,17 +12,19 @@ export function FocoSkeleton({ screen = 'today' }: { screen?: Screen }) {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={styles.content}>
-        <View style={styles.toolbar}><View style={styles.icon} /><View style={styles.icon} /></View>
-        <View style={styles.title} />
-        <View style={styles.subtitle} />
-        {screen === 'today' ? <TodaySkeleton styles={styles} /> : null}
-        {screen === 'agenda' ? <AgendaSkeleton styles={styles} /> : null}
-        {screen === 'projects' ? <ProjectsSkeleton styles={styles} /> : null}
-        {screen === 'focus' ? <FocusSkeleton styles={styles} /> : null}
-        {screen === 'stats' ? <StatsSkeleton styles={styles} /> : null}
-      </View>
-      <View style={styles.tabBar}>{[0, 1, 2, 3, 4].map((item) => <View key={item} style={styles.tabItem}><View style={styles.tabIcon} /><View style={styles.tabLabel} /></View>)}</View>
+      <FocoSkeletonPulse>
+        <View style={styles.content}>
+          <View style={styles.toolbar}><View style={styles.icon} /><View style={styles.icon} /></View>
+          <View style={styles.title} />
+          <View style={styles.subtitle} />
+          {screen === 'today' ? <TodaySkeleton styles={styles} /> : null}
+          {screen === 'agenda' ? <AgendaSkeleton styles={styles} /> : null}
+          {screen === 'projects' ? <ProjectsSkeleton styles={styles} /> : null}
+          {screen === 'focus' ? <FocusSkeleton styles={styles} /> : null}
+          {screen === 'stats' ? <StatsSkeleton styles={styles} /> : null}
+        </View>
+        <View style={styles.tabBar}>{[0, 1, 2, 3, 4].map((item) => <View key={item} style={styles.tabItem}><View style={styles.tabIcon} /><View style={styles.tabLabel} /></View>)}</View>
+      </FocoSkeletonPulse>
     </SafeAreaView>
   );
 }
