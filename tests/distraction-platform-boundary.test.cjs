@@ -26,11 +26,11 @@ test('keeps Android monitoring blocked until Usage Access is granted', () => {
     resolveDistractionMonitoringStatus({
       platform: 'android',
       usageStatsAvailable: true,
-      usageAccess: 'denied',
+      usageAccess: 'notGranted',
     }),
     {
       supported: true,
-      permission: 'denied',
+      permission: 'notGranted',
       monitoringAllowed: false,
       reason: 'permission-required',
     },
