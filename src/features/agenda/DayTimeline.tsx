@@ -87,13 +87,13 @@ function Summary({ label, value, color }: { label: string; value: string; color:
 const styles = StyleSheet.create({
   summaryRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, marginBottom: 6 },
   summary: { flex: 1 },
-  summaryValue: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, lineHeight: 18, fontVariant: ['tabular-nums'] },
-  summaryLabel: { fontFamily: 'Manrope_400Regular', fontSize: 9.5, lineHeight: 12, marginTop: 1 },
+  summaryValue: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 18, fontVariant: ['tabular-nums'] },
+  summaryLabel: { fontFamily: 'InstrumentSans_400Regular', fontSize: 9.5, lineHeight: 12, marginTop: 1 },
   timeline: { position: 'relative', borderBottomWidth: StyleSheet.hairlineWidth },
   hourRow: { position: 'absolute', left: 0, right: 0, height: 60 * MINUTE_HEIGHT, borderTopWidth: StyleSheet.hairlineWidth },
-  hourLabel: { width: 46, paddingTop: 3, fontFamily: 'Manrope_400Regular', fontSize: 9.5, lineHeight: 12, fontVariant: ['tabular-nums'] },
+  hourLabel: { width: 46, paddingTop: 3, fontFamily: 'InstrumentSans_400Regular', fontSize: 9.5, lineHeight: 12, fontVariant: ['tabular-nums'] },
   sessionBar: { position: 'absolute', width: 3, borderRadius: 2, borderWidth: StyleSheet.hairlineWidth, zIndex: 2 },
   nowLine: { position: 'absolute', left: 45, right: 0, height: 1, zIndex: 20 },
   nowDot: { position: 'absolute', left: -3, top: -3, width: 7, height: 7, borderRadius: 4 },
-  flexTitle: { fontFamily: 'Manrope_600SemiBold', fontSize: 14, lineHeight: 18 },
+  flexTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 18 },
 });

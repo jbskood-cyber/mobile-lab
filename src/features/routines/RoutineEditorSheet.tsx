@@ -103,7 +103,7 @@ function Chip({ label, active, onPress, flex = false }: { label: string; active:
 }
 
 const styles = StyleSheet.create({
-  input: { minHeight: 46, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, fontFamily: 'Manrope_400Regular', fontSize: 13.5, lineHeight: 18, marginBottom: 14 },
+  input: { minHeight: 46, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, fontFamily: 'InstrumentSans_400Regular', fontSize: 13.5, lineHeight: 18, marginBottom: 14 },
   multiline: { minHeight: 84, paddingTop: 10 },
   chips: { gap: 6, paddingBottom: 14 },
   equal: { flexDirection: 'row', gap: 6, marginBottom: 14 },
