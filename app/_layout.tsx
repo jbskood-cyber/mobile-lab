@@ -50,7 +50,7 @@ function ThemedApplication() {
       <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
         <FocoSystemChrome />
         <NotificationObserver />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.bg }, animation: 'fade' }} />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.bg }, animation: 'slide_from_right' }} />
         <FocoAppMenu />
         <FocoUndoHost />
       </View>
