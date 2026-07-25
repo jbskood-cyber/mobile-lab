@@ -7,6 +7,7 @@ const tabBarPath = path.join(process.cwd(), 'src', 'ui', 'FocoTabBar.tsx');
 const premiumPath = path.join(process.cwd(), 'src', 'ui', 'premium.ts');
 const motionPath = path.join(process.cwd(), 'src', 'ui', 'motion.ts');
 const themeTokensPath = path.join(process.cwd(), 'src', 'ui', 'themeTokens.ts');
+const iconPath = path.join(process.cwd(), 'src', 'ui', 'FocoIcon.tsx');
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -43,4 +44,15 @@ test('typography foundation exposes semantic roles and stable numeric variants',
     assert.match(theme, new RegExp(`${role}:`));
   }
   assert.match(theme, /fontVariant:\s*\['tabular-nums'\]/);
+});
+
+test('navigation icons use one professional family with explicit active weight', () => {
+  const icon = read(iconPath);
+  const tabBar = read(tabBarPath);
+  assert.match(icon, /PHOSPHOR_NAV_ICONS/);
+  assert.match(icon, /weight\?:\s*'regular'\s*\|\s*'fill'/);
+  for (const iconName of ['home', 'calendar', 'circle', 'folder', 'bars']) {
+    assert.match(icon, new RegExp(`${iconName}:`));
+  }
+  assert.match(tabBar, /weight=\{focused \? 'fill' : 'regular'\}/);
 });
