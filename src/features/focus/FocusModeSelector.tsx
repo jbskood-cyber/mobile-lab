@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { FOCO_RUNTIME_FINGERPRINT } from '@/src/core/runtimeFingerprint';
 import type { TimerMode } from '@/src/core/focusTimer';
 import { FocoPressable } from '@/src/ui/FocoPressable';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
@@ -55,6 +56,11 @@ export function FocusModeSelector({
           );
         })}
       </View>
+      {__DEV__ ? (
+        <Text accessibilityLabel={`Runtime ${FOCO_RUNTIME_FINGERPRINT}`} style={[styles.runtimeFingerprint, { color: theme.colors.inactive, fontFamily: theme.fonts.medium }]}>
+          {FOCO_RUNTIME_FINGERPRINT}
+        </Text>
+      ) : null}
       {detail ? (
         <FocoPressable
           accessibilityRole="button"
@@ -79,6 +85,7 @@ const styles = StyleSheet.create({
   mode: { flex: 1, minHeight: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
   modeText: { fontSize: 11, lineHeight: 14 },
   disabled: { opacity: 0.5 },
+  runtimeFingerprint: { alignSelf: 'center', fontSize: 8, lineHeight: 10, letterSpacing: 0.2 },
   detail: { minHeight: 30, alignSelf: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   detailText: { fontSize: 11, lineHeight: 14 },
   stopwatchDetail: { minHeight: 30, textAlign: 'center', textAlignVertical: 'center' },
