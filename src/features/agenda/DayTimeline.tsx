@@ -38,6 +38,13 @@ export function DayTimeline({ state, day, onTask, onSlot }: {
   const nowTop = today ? Math.max(0, (Date.now() - atLocalTime(day, startHour)) / 60_000 * MINUTE_HEIGHT) : -1;
   const dayStart = startOfLocalDay(day);
   const dayEnd = endOfLocalDay(day);
+  const planStart = atLocalTime(day, state.planning.workdayStartHour);
+  const planEnd = state.planning.workdayEndHour >= 24 ? dayEnd : atLocalTime(day, state.planning.workdayEndHour);
+  const hasOutOfHoursReal = sessions.some((session) => {
+    const visibleStart = Math.max(dayStart, session.startedAt);
+    const visibleEnd = Math.min(dayEnd, session.endedAt);
+    return visibleStart < planStart || visibleEnd > planEnd;
+  });
   const realMinutes = Math.round(sessions.reduce((total, session) => {
     const visibleStart = Math.max(dayStart, session.startedAt);
     const visibleEnd = Math.min(dayEnd, session.endedAt);
@@ -54,6 +61,9 @@ export function DayTimeline({ state, day, onTask, onSlot }: {
         <Summary label="Real" value={`${realMinutes}m`} color={theme.colors.accent} />
         <Summary label={plan.overloadMinutes > 0 ? 'Exceso' : 'Libre'} value={`${plan.overloadMinutes || plan.freeMinutes}m`} color={plan.overloadMinutes > 0 ? theme.colors.danger : theme.colors.success} />
       </View>
+      {hasOutOfHoursReal ? (
+        <Text style={[styles.outOfHoursNote, { color: theme.colors.muted }]}>Real fuera del horario · también cuenta</Text>
+      ) : null}
       <View style={styles.laneHeader}>
         <Text style={[styles.laneLabel, { color: theme.colors.muted }]}>Plan</Text>
         <Text style={[styles.laneLabel, styles.realLaneLabel, { color: theme.colors.muted }]}>Real</Text>
@@ -123,6 +133,7 @@ const styles = StyleSheet.create({
   summary: { flex: 1 },
   summaryValue: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 18, fontVariant: ['tabular-nums'] },
   summaryLabel: { fontFamily: 'InstrumentSans_400Regular', fontSize: 9.5, lineHeight: 12, marginTop: 1 },
+  outOfHoursNote: { paddingTop: 5, paddingBottom: 2, fontFamily: 'InstrumentSans_500Medium', fontSize: 9.5, lineHeight: 12 },
   laneHeader: { minHeight: 24, flexDirection: 'row', alignItems: 'center', paddingLeft: 54, paddingRight: 5 },
   laneLabel: { width: '50%', fontFamily: 'InstrumentSans_600SemiBold', fontSize: 9.5, lineHeight: 12, textTransform: 'uppercase', letterSpacing: 0.55 },
   realLaneLabel: { textAlign: 'right' },
