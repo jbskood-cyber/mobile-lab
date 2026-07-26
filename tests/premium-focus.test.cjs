@@ -19,6 +19,7 @@ const hookSource = fs.readFileSync(path.join(__dirname, '../src/core/useFocusTim
 const focusScreenSource = fs.readFileSync(path.join(__dirname, '../src/features/focus/FocusScreen.tsx'), 'utf8');
 const selectorSource = fs.readFileSync(path.join(__dirname, '../src/features/focus/FocusModeSelector.tsx'), 'utf8');
 const presetSource = fs.readFileSync(path.join(__dirname, '../src/features/focus/TimerPresetSheet.tsx'), 'utf8');
+const fingerprintPath = path.join(__dirname, '../src/core/runtimeFingerprint.ts');
 
 test('free countdown timer has its own deterministic duration and does not change Pomodoro semantics', () => {
   const runtime = createFocusRuntime();
@@ -74,6 +75,16 @@ test('Focus exposes exactly Pomodoro, Timer and Stopwatch without a permanent pr
   assert.match(focusScreenSource, /<FocusModeSelector/);
   assert.match(focusScreenSource, /onConfigureTimer=\{\(\) => setTimerPresetOpen\(true\)\}/);
   assert.doesNotMatch(focusScreenSource, /\[5,\s*10,\s*15,\s*25,\s*45,\s*60\]/);
+});
+
+test('Focus development preview exposes a closeout runtime fingerprint without shipping it as product chrome', () => {
+  assert.equal(fs.existsSync(fingerprintPath), true);
+  const fingerprintSource = fs.readFileSync(fingerprintPath, 'utf8');
+  assert.match(fingerprintSource, /FOCO_RUNTIME_FINGERPRINT/);
+  assert.match(fingerprintSource, /b4\.3-closeout-c1/);
+  assert.match(selectorSource, /FOCO_RUNTIME_FINGERPRINT/);
+  assert.match(selectorSource, /__DEV__/);
+  assert.match(selectorSource, /Runtime \$\{FOCO_RUNTIME_FINGERPRINT\}/);
 });
 
 test('Timer presets stay compact and do not mutate Pomodoro preferences', () => {
