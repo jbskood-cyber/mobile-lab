@@ -92,6 +92,7 @@ test('Day timeline renders real sessions as readable event blocks instead of 3px
   assert.doesNotMatch(source, /width:\s*3/);
   assert.match(source, /Plan/);
   assert.match(source, /Real/);
+  assert.match(source, /Real fuera del horario · también cuenta/);
 });
 
 test('calendar tap contract selects once and opens only same-day second tap inside window', () => {
