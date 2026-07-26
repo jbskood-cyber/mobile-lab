@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const { createInitialState, startOfLocalDay } = require('../.core-test-dist/core/model.js');
 const { getAgendaSessionEvents, getAgendaTimelineWindow } = require('../.core-test-dist/core/agendaDay.js');
+const { resolveCalendarTap } = require('../.core-test-dist/core/calendarTap.js');
 
 const timelinePath = path.join(process.cwd(), 'src', 'features', 'agenda', 'DayTimeline.tsx');
 const monthCalendarPath = path.join(process.cwd(), 'src', 'features', 'agenda', 'MonthCalendar.tsx');
@@ -93,13 +94,28 @@ test('Day timeline renders real sessions as readable event blocks instead of 3px
   assert.match(source, /Real/);
 });
 
-test('Monthly calendar supports single select and same-day double tap to exact Day mode', () => {
+test('calendar tap contract selects once and opens only same-day second tap inside window', () => {
+  const first = resolveCalendarTap(null, 1000, 10_000);
+  assert.deepEqual(first, { action: 'select', next: { day: 1000, at: 10_000 } });
+
+  const second = resolveCalendarTap(first.next, 1000, 10_390);
+  assert.deepEqual(second, { action: 'open', next: null });
+
+  const late = resolveCalendarTap(first.next, 1000, 10_421);
+  assert.equal(late.action, 'select');
+  assert.deepEqual(late.next, { day: 1000, at: 10_421 });
+
+  const otherDay = resolveCalendarTap(first.next, 2000, 10_200);
+  assert.equal(otherDay.action, 'select');
+  assert.deepEqual(otherDay.next, { day: 2000, at: 10_200 });
+});
+
+test('Monthly calendar wires the tested tap decision to exact Day mode', () => {
   const month = read(monthCalendarPath);
   const agenda = read(agendaScreenPath);
-  assert.match(month, /onOpenDay/);
-  assert.match(month, /lastTap/);
-  assert.match(month, /280/);
-  assert.match(month, /handleDayPress\(day\.timestamp\)/);
+  assert.match(month, /resolveCalendarTap/);
+  assert.match(month, /decision\.action === 'open'/);
+  assert.doesNotMatch(month, /DOUBLE_TAP_MS/);
   assert.match(month, /onSelect\(timestamp\)/);
   assert.match(month, /onOpenDay\(timestamp\)/);
   assert.match(agenda, /openCalendarDay/);
