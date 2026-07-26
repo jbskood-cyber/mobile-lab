@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { buildMonthGrid, shiftMonth } from '@/src/core/calendar';
+import { resolveCalendarTap, type CalendarTapState } from '@/src/core/calendarTap';
 import type { FocoState } from '@/src/core/model';
 import { FocoIcon } from '@/src/ui/FocoIcon';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
@@ -9,7 +10,6 @@ import { hapticSelection, pressedStyle } from '@/src/ui/premium';
 import type { FocoTheme } from '@/src/ui/themeTokens';
 
 const weekdays = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
-const DOUBLE_TAP_MS = 280;
 
 export function MonthCalendar({ state, anchor, selected, onAnchor, onSelect, onOpenDay }: {
   state: FocoState;
@@ -22,18 +22,16 @@ export function MonthCalendar({ state, anchor, selected, onAnchor, onSelect, onO
   const theme = useFocoTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const days = useMemo(() => buildMonthGrid(state, anchor), [anchor, state]);
-  const lastTap = useRef<{ day: number; at: number } | null>(null);
+  const lastTap = useRef<CalendarTapState>(null);
   const monthLabel = new Date(anchor).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }).replace(/^./, (value) => value.toUpperCase());
 
   const handleDayPress = (timestamp: number) => {
-    const now = Date.now();
-    const previous = lastTap.current;
-    if (previous && previous.day === timestamp && now - previous.at <= DOUBLE_TAP_MS) {
-      lastTap.current = null;
+    const decision = resolveCalendarTap(lastTap.current, timestamp, Date.now());
+    lastTap.current = decision.next;
+    if (decision.action === 'open') {
       onOpenDay(timestamp);
       return;
     }
-    lastTap.current = { day: timestamp, at: now };
     onSelect(timestamp);
     hapticSelection();
   };
