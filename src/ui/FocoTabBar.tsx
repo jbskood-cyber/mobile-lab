@@ -1,16 +1,11 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { IconName } from './FocoIcon';
+import { FocoIcon, type IconName } from './FocoIcon';
 import { FocoPressable } from './FocoPressable';
-import { FocoTabItem } from './FocoTabItem';
 import { useFocoTheme } from './FocoThemeContext';
 import { useFocoUI } from './FocoUIContext';
-import { motion } from './motion';
-import { useReducedMotion } from './premium';
 
 const routeMeta: Record<string, { label: string; icon: IconName }> = {
   index: { label: 'Hoy', icon: 'home' },
@@ -20,80 +15,57 @@ const routeMeta: Record<string, { label: string; icon: IconName }> = {
   stats: { label: 'Progreso', icon: 'bars' },
 };
 
-const INDICATOR_WIDTH = 20;
-
-export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export function FocoTabBar({ state }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const theme = useFocoTheme();
-  const reducedMotion = useReducedMotion();
-  const { keyboardVisible, overlayCount, appMenuVisible, focusImmersive, scrollToTop } = useFocoUI();
-  const [barWidth, setBarWidth] = useState(0);
-  const indicatorX = useSharedValue(0);
-  const tabWidth = state.routes.length > 0 ? barWidth / state.routes.length : 0;
-
-  useEffect(() => {
-    const target = tabWidth > 0
-      ? state.index * tabWidth + Math.max(0, (tabWidth - INDICATOR_WIDTH) / 2)
-      : 0;
-    indicatorX.value = reducedMotion
-      ? target
-      : withTiming(target, { duration: motion.fast });
-  }, [indicatorX, reducedMotion, state.index, tabWidth]);
-
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value }],
-  }));
+  const { keyboardVisible, overlayCount, appMenuVisible, focusImmersive, openAppMenu } = useFocoUI();
+  const currentRoute = state.routes[state.index];
+  const currentMeta = routeMeta[currentRoute?.name ?? 'index'] ?? routeMeta.index;
 
   if (keyboardVisible || overlayCount > 0 || appMenuVisible || focusImmersive) return null;
 
   return (
-    <View style={{ backgroundColor: theme.colors.bgRaised, paddingBottom: Math.max(insets.bottom, 4) }}>
-      <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.borderSoft }} />
-      <View
-        onLayout={(event) => setBarWidth(event.nativeEvent.layout.width)}
-        style={{ height: theme.density.tabBarHeight, flexDirection: 'row', alignItems: 'center' }}
+    <View pointerEvents="box-none" style={[styles.zone, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <FocoPressable
+        feedback="quiet"
+        accessibilityRole="button"
+        accessibilityLabel={`Abrir navegación. Sección actual: ${currentMeta.label}`}
+        onPress={openAppMenu}
+        style={[styles.capsule, { backgroundColor: theme.colors.inverse, borderColor: theme.colors.border }]}
       >
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.activeIndicator, { backgroundColor: theme.colors.accent }, indicatorStyle]}
-        />
-        {state.routes.map((route, index) => {
-          const focused = state.index === index;
-          const meta = routeMeta[route.name] ?? { label: route.name, icon: 'circle' as IconName };
-          const options = descriptors[route.key]?.options;
-          const onPress = () => {
-            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-            if (event.defaultPrevented) return;
-            if (focused) scrollToTop(route.name);
-            else navigation.navigate(route.name);
-          };
-          return (
-            <FocoPressable
-              key={route.key}
-              feedback="quiet"
-              accessibilityRole="tab"
-              accessibilityState={{ selected: focused }}
-              accessibilityLabel={options?.tabBarAccessibilityLabel ?? meta.label}
-              onPress={onPress}
-              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-              style={styles.item}
-            >
-              <FocoTabItem
-                focused={focused}
-                icon={meta.icon}
-                label={meta.label}
-                activeColor={theme.colors.text}
-                inactiveColor={theme.colors.inactive}
-              />
-            </FocoPressable>
-          );
-        })}
-      </View>
+        <FocoIcon name={currentMeta.icon} size={18} color={theme.colors.inverseText} weight="fill" />
+        <Text style={[styles.capsuleLabel, { color: theme.colors.inverseText }]} numberOfLines={1}>{currentMeta.label}</Text>
+        <FocoIcon name="chevron-down" size={15} color={theme.colors.inverseText} style={styles.chevron} />
+      </FocoPressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  item: { flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  activeIndicator: { position: 'absolute', top: 0, left: 0, width: INDICATOR_WIDTH, height: 2, borderRadius: 1, zIndex: 2 },
+  zone: {
+    minHeight: 62,
+    paddingTop: 5,
+    paddingHorizontal: 14,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  capsule: {
+    minHeight: 46,
+    maxWidth: 190,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  capsuleLabel: {
+    flexShrink: 1,
+    fontFamily: 'InstrumentSans_600SemiBold',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  chevron: { transform: [{ rotate: '180deg' }] },
 });
