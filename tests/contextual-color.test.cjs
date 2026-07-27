@@ -39,10 +39,13 @@ test('task and agenda identity accept project color without recoloring their who
   assert.match(timeline, /projectColor=/);
 });
 
-test('Progreso resolves project colors for distributions and recent recorded time while aggregate charts stay neutral', () => {
+test('Progreso resolves project colors for distributions, dominant recorded time, heatmap, and recent sessions', () => {
   const stats = read('src', 'features', 'stats', 'StatsScreen.tsx');
   assert.match(stats, /resolveProjectColor/);
   assert.match(stats, /projectColors/);
+  assert.match(stats, /dominantProjectId/);
+  assert.match(stats, /seriesColors/);
+  assert.match(stats, /heatmapColors/);
   assert.match(stats, /color:/);
   assert.match(stats, /sessionMarker|sessionDot/);
   assert.doesNotMatch(stats, /backgroundColor:\s*theme\.colors\.accent\s*\}\]\s*\/?>/);
@@ -52,5 +55,5 @@ test('Rutinas explains that routines are task templates rather than another task
   const routines = read('src', 'features', 'routines', 'RoutinesSheet.tsx');
   assert.match(routines, /Plantillas/i);
   assert.match(routines, /tareas/i);
-  assert.match(routines, /Generar|Crear tarea|Crear ahora/i);
+  assert.match(routines, /Generar|Crear tarea|Crear ahora|Crear hoy/i);
 });
