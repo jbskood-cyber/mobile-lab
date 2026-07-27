@@ -7,6 +7,7 @@ import { buildDayPlan } from '@/src/core/dayPlan';
 import { atLocalTime, endOfLocalDay, startOfLocalDay, type FocoState, type Task } from '@/src/core/model';
 import { FocoPressable } from '@/src/ui/FocoPressable';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
+import { resolveProjectColor } from '@/src/ui/projectColors';
 import { AgendaSessionBlock } from './AgendaSessionBlock';
 import { AgendaTaskBlock } from './AgendaTaskBlock';
 
@@ -22,7 +23,7 @@ export function DayTimeline({ state, day, onTask, onSlot }: {
   const theme = useFocoTheme();
   const plan = useMemo(() => buildDayPlan(state, day), [day, state]);
   const tasks = useMemo(() => getTasksForCalendarDay(state, day).filter((task) => !task.completed && task.plannedStartAt !== undefined), [day, state]);
-  const projectMap = useMemo(() => new Map(state.projects.map((project) => [project.id, project.name])), [state.projects]);
+  const projectMap = useMemo(() => new Map(state.projects.map((project) => [project.id, project])), [state.projects]);
   const pomodoros = useMemo(() => {
     const map = new Map<string, number>();
     for (const session of state.sessions) if (session.taskId && session.phase === 'focus' && session.mode === 'pomodoro' && session.completed) map.set(session.taskId, (map.get(session.taskId) ?? 0) + 1);
@@ -45,13 +46,17 @@ export function DayTimeline({ state, day, onTask, onSlot }: {
   }, 0));
   const windowStart = atLocalTime(day, startHour);
   const windowEnd = endHour >= 24 ? dayEnd : atLocalTime(day, endHour);
+  const colorForProject = (projectId: string) => {
+    const project = projectMap.get(projectId);
+    return project ? resolveProjectColor(project.color, theme.mode) : theme.colors.text;
+  };
 
   return (
     <View>
       <View style={[styles.summaryRow, { borderBottomColor: theme.colors.borderSoft }]}> 
         <Summary label="Fijo" value={`${plan.scheduledMinutes}m`} color={theme.colors.text} />
         <Summary label="Flexible" value={`${plan.flexibleMinutes}m`} color={theme.colors.text} />
-        <Summary label="Real" value={`${realMinutes}m`} color={theme.colors.accent} />
+        <Summary label="Real" value={`${realMinutes}m`} color={theme.colors.text} />
         <Summary label={plan.overloadMinutes > 0 ? 'Exceso' : 'Libre'} value={`${plan.overloadMinutes || plan.freeMinutes}m`} color={plan.overloadMinutes > 0 ? theme.colors.danger : theme.colors.success} />
       </View>
       <View style={styles.laneHeader}>
@@ -78,11 +83,13 @@ export function DayTimeline({ state, day, onTask, onSlot }: {
         })}
         {tasks.map((task, index) => {
           const position = getTimelinePosition(task, day, startHour, MINUTE_HEIGHT);
+          const project = projectMap.get(task.projectId);
           return (
             <AgendaTaskBlock
               key={task.id}
               task={task}
-              projectName={projectMap.get(task.projectId) ?? 'Sin proyecto'}
+              projectName={project?.name ?? 'Sin proyecto'}
+              projectColor={colorForProject(task.projectId)}
               completedPomodoros={pomodoros.get(task.id) ?? 0}
               onPress={() => onTask(task)}
               style={{ position: 'absolute', top: position.top, minHeight: position.height, left: 54 + (index % 2) * 3, right: '48%', zIndex: 3 + index }}
@@ -98,6 +105,7 @@ export function DayTimeline({ state, day, onTask, onSlot }: {
             <AgendaSessionBlock
               key={session.id}
               event={session}
+              projectColor={colorForProject(session.projectId)}
               style={{ position: 'absolute', top, minHeight: Math.max(SESSION_MIN_HEIGHT, visibleMinutes * MINUTE_HEIGHT), left: '56%', right: 5, zIndex: 8 + index }}
             />
           );
@@ -107,7 +115,7 @@ export function DayTimeline({ state, day, onTask, onSlot }: {
       {plan.flexible.length > 0 ? (
         <View style={{ marginTop: 12 }}>
           <Text style={[styles.flexTitle, { color: theme.colors.text }]}>Sin hora</Text>
-          {plan.flexible.map((task) => <AgendaTaskBlock key={task.id} task={task} projectName={projectMap.get(task.projectId) ?? 'Sin proyecto'} completedPomodoros={pomodoros.get(task.id) ?? 0} onPress={() => onTask(task)} style={{ marginTop: 6 }} />)}
+          {plan.flexible.map((task) => { const project = projectMap.get(task.projectId); return <AgendaTaskBlock key={task.id} task={task} projectName={project?.name ?? 'Sin proyecto'} projectColor={colorForProject(task.projectId)} completedPomodoros={pomodoros.get(task.id) ?? 0} onPress={() => onTask(task)} style={{ marginTop: 6 }} />; })}
         </View>
       ) : null}
     </View>
