@@ -94,6 +94,13 @@ test('Day timeline renders real sessions as readable event blocks instead of 3px
   assert.match(source, /Real/);
 });
 
+test('Agenda Day explains that real sessions outside the planned schedule remain visible', () => {
+  const source = read(timelinePath);
+  assert.match(source, /Plan = horario previsto/);
+  assert.match(source, /Real = tiempo registrado/);
+  assert.match(source, /fuera del horario/);
+});
+
 test('calendar tap recognizer opens only the same date within 450ms', () => {
   const first = registerCalendarTap(null, 100, 1_000);
   assert.deepEqual(first, { next: { day: 100, at: 1_000 }, openDay: false });
