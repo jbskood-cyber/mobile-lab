@@ -11,6 +11,7 @@ import { FocoIcon, type IconName } from '@/src/ui/FocoIcon';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 import { useFocoUI } from '@/src/ui/FocoUIContext';
 import { hapticImpact, hapticSelection, hapticSuccess, pressedStyle } from '@/src/ui/premium';
+import { resolveProjectColor } from '@/src/ui/projectColors';
 import { ProjectEditorSheet } from './ProjectEditorSheet';
 import { ProjectTaskAccordion } from './ProjectTaskAccordion';
 
@@ -35,6 +36,7 @@ export function ProjectDetailScreen() {
 
   if (!project || !metrics) return <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.bg }]}><View style={styles.missing}><Text style={[styles.missingTitle, { color: theme.colors.text }]}>Este proyecto ya no existe</Text><Pressable onPress={() => router.back()} style={[styles.primary, { backgroundColor: theme.colors.inverse }]}><Text style={[styles.primaryText, { color: theme.colors.inverseText }]}>Volver</Text></Pressable></View></SafeAreaView>;
 
+  const projectColor = resolveProjectColor(project.color, theme.mode);
   const toggleTask = (task: Task) => {
     if (task.completed) { reopenTask(task.id); hapticSuccess(); return; }
     const result = completeTask(task.id);
@@ -55,7 +57,7 @@ export function ProjectDetailScreen() {
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.bg }]} edges={['top', 'left', 'right']}>
         <View style={styles.header}><Pressable accessibilityLabel="Volver" onPress={() => router.back()} style={({ pressed }) => [styles.iconButton, pressed && pressedStyle]}><FocoIcon name="chevron-left" size={22} color={theme.colors.text} /></Pressable><Text style={[styles.headerTitle, { color: theme.colors.text }]}>Proyecto</Text><Pressable accessibilityLabel="Editar proyecto" onPress={() => setProjectEditorOpen(true)} style={({ pressed }) => [styles.iconButton, pressed && pressedStyle]}><FocoIcon name="edit" size={20} color={theme.colors.text} /></Pressable></View>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.projectHeader}><View style={[styles.projectIcon, { backgroundColor: theme.colors.panelStrong }]}><FocoIcon name={project.icon as IconName} size={24} color={theme.colors.text} /></View><View style={styles.projectCopy}><Text style={[styles.title, { color: theme.colors.text }]}>{project.name}</Text>{project.description ? <Text style={[styles.description, { color: theme.colors.muted }]}>{project.description}</Text> : null}</View></View>
+          <View style={styles.projectHeader}><View style={[styles.projectIcon, { backgroundColor: theme.colors.panelStrong }]}><FocoIcon name={project.icon as IconName} size={24} color={projectColor} /></View><View style={styles.projectCopy}><Text style={[styles.title, { color: theme.colors.text }]}>{project.name}</Text>{project.description ? <Text style={[styles.description, { color: theme.colors.muted }]}>{project.description}</Text> : null}</View></View>
           <View style={[styles.metrics, { borderColor: theme.colors.borderSoft }]}><Metric value={`${Math.round(metrics.progress * 100)}%`} label="Progreso" /><Metric value={`${metrics.completedPomodoros}/${metrics.plannedPomodoros}`} label="Pomodoros" /><Metric value={formatDuration(metrics.focusSeconds, true)} label="Enfoque" /></View>
           <View style={styles.actions}><Action icon="plus" label="Tarea" onPress={() => setTaskEditorOpen(true)} primary /><Action icon="play" label="Enfocar" onPress={() => { hapticImpact(); router.push({ pathname: '/(tabs)/focus', params: { projectId: project.id } }); }} /><Action icon="archive" label={project.archived ? 'Restaurar' : 'Archivar'} onPress={archive} /></View>
 
