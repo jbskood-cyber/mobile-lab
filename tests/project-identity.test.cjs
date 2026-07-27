@@ -67,12 +67,12 @@ test('legacy v3 projects hydrate with deterministic valid identity and preserve 
 test('project icon and color can be created and updated independently', () => {
   const now = new Date(2026, 6, 26, 19, 10, 0, 0).getTime();
   const initial = createInitialState(now);
-  const createdState = addProject(initial, 'Proyecto propio', 'atom', 'cobalt', now + 1);
+  const createdState = addProject(initial, 'Proyecto propio', 'atom', 'pacific', now + 1);
   const created = createdState.projects[0];
 
   assert.equal(created.name, 'Proyecto propio');
   assert.equal(created.icon, 'atom');
-  assert.equal(created.color, 'cobalt');
+  assert.equal(created.color, 'pacific');
 
   const recolored = updateProject(createdState, created.id, { color: 'amber-soft' }, now + 2);
   const updated = recolored.projects.find((project) => project.id === created.id);
