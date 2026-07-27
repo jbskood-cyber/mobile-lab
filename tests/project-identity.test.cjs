@@ -16,6 +16,9 @@ const {
 } = model;
 
 const iconSourcePath = path.join(process.cwd(), 'src', 'ui', 'FocoIcon.tsx');
+const paletteSourcePath = path.join(process.cwd(), 'src', 'ui', 'projectColors.ts');
+const editorSourcePath = path.join(process.cwd(), 'src', 'features', 'projects', 'ProjectEditorSheet.tsx');
+const storeSourcePath = path.join(process.cwd(), 'src', 'core', 'FocoStore.tsx');
 
 test('project identity catalogs are finite, unique, and seeded on every project', () => {
   assert.equal(PROJECT_ICON_IDS.length, 32);
@@ -92,4 +95,23 @@ test('all 32 curated project icon IDs resolve through FocoIcon', () => {
       `${icon} must resolve through FocoIcon`,
     );
   }
+});
+
+test('project editor exposes independent solid color and 32-icon selectors', () => {
+  assert.ok(fs.existsSync(paletteSourcePath), 'projectColors.ts must define the solid project palette');
+  const palette = fs.readFileSync(paletteSourcePath, 'utf8');
+  const editor = fs.readFileSync(editorSourcePath, 'utf8');
+  const store = fs.readFileSync(storeSourcePath, 'utf8');
+
+  for (const color of PROJECT_COLOR_IDS) assert.ok(palette.includes(`${color}:`) || palette.includes(`'${color}'`), `${color} must have a palette token`);
+  assert.match(palette, /#D6A23A/i);
+  assert.match(editor, /COLOR DEL PROYECTO/);
+  assert.match(editor, /PROJECT_COLOR_IDS/);
+  assert.match(editor, /PROJECT_ICON_IDS/);
+  assert.match(editor, /setColor/);
+  assert.match(editor, /setIcon/);
+  assert.match(editor, /addProject\(name, icon, color\)/);
+  assert.match(editor, /updateProject\(project\.id, \{ name, description, icon, color \}\)/);
+  assert.match(store, /addProject: \(name: string, icon\?: ProjectIcon, color\?: ProjectColor\)/);
+  assert.match(store, /'name' \| 'icon' \| 'color'/);
 });
