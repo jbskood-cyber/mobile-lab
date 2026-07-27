@@ -12,6 +12,7 @@ const {
 } = require('../.core-test-dist/core/model.js');
 
 const accordionPath = path.join(process.cwd(), 'src', 'features', 'projects', 'ProjectTaskAccordion.tsx');
+const projectDetailPath = path.join(process.cwd(), 'src', 'features', 'projects', 'ProjectDetailScreen.tsx');
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -65,4 +66,15 @@ test('project task accordion exposes one expandable subtask level with inline ad
   assert.match(source, /onAddSubtask\(task\.id, draft\.trim\(\)\)/);
   assert.match(source, /Abrir detalles/);
   assert.doesNotMatch(source, /<ProjectTaskAccordion/);
+});
+
+test('Project detail wires pending tasks to the accordion and existing subtask store actions', () => {
+  const source = read(projectDetailPath);
+  assert.match(source, /ProjectTaskAccordion/);
+  assert.match(source, /addSubtask/);
+  assert.match(source, /toggleSubtask/);
+  assert.match(source, /expandedTaskIds/);
+  assert.match(source, /onToggleSubtask=\{toggleSubtask\}/);
+  assert.match(source, /onAddSubtask=\{addSubtask\}/);
+  assert.match(source, /onOpenDetails=/);
 });
