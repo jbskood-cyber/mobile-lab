@@ -172,20 +172,15 @@ New icon values must be stable string identifiers, not library-internal componen
 
 Project color is stored as a stable semantic color identifier, not a raw arbitrary hex on each project.
 
-Recommended shape:
+The semantic IDs for the first palette version are frozen as:
 
 ```ts
-export type ProjectColorId =
-  | 'green'
-  | 'blue'
-  | 'coral'
-  | 'violet'
-  | 'teal'
-  | 'amber'
-  | '...approved catalog ids';
+export type ProjectColorId = 'green' | 'blue' | 'coral' | 'violet' | 'teal' | 'amber';
 ```
 
-The exact final registry is copied from the user-approved palette catalog. The yellow/amber direction is already fixed as `#D6A23A` for the light/base token, with an approximately darker `#B98224` contrast/dark companion unless final contrast testing requires a nearby adjustment.
+The exact green, blue, coral, violet, and teal token values are an external product input: they must be copied verbatim from the user-approved palette catalog before Slice C begins. The implementation must not invent or approximate them.
+
+The amber family is already fixed in direction: `#D6A23A` is the base/light candidate. `#B98224` is the current darker companion candidate and may move only as much as required by measured dark-mode/contrast validation.
 
 Existing persisted projects have no color. They must render through a deterministic fallback resolver until explicitly edited. The resolver must not mutate storage merely by reading it.
 
@@ -203,9 +198,9 @@ UI collapse/expand state is ephemeral presentation state and must not be persist
 
 ## 4. 32-icon project catalog
 
-The catalog is curated, finite, and stable. It should cover broad user intent without pretending to understand what a project means.
+The catalog is curated, finite, and stable. It covers broad user intent without pretending to understand what a project means.
 
-The catalog should contain exactly these 32 semantic slots, mapped to the closest coherent Phosphor-style glyph already compatible with FOCO’s icon language:
+The catalog contains exactly these 32 semantic slots, mapped to the closest coherent Phosphor-style glyph already compatible with FOCO’s icon language:
 
 1. briefcase
 2. book
@@ -436,7 +431,7 @@ Gate: automated green; no state-version change.
 - create/edit support;
 - no arbitrary hex storage.
 
-Gate: exact final non-amber palette values must already be recorded from the user-approved palette catalog before this slice is implemented. Do not invent missing color values.
+Gate: exact final green/blue/coral/violet/teal values must already be recorded from the user-approved palette catalog before this slice is implemented. Do not invent missing color values.
 
 ### Slice D — Navigation replacement
 
