@@ -16,7 +16,7 @@ function formatDuration(seconds: number) {
   return remainder > 0 ? `${hours} h ${remainder} min` : `${hours} h`;
 }
 
-export function AgendaSessionBlock({ event, style }: { event: AgendaSessionEvent; style?: StyleProp<ViewStyle> }) {
+export function AgendaSessionBlock({ event, projectColor, style }: { event: AgendaSessionEvent; projectColor: string; style?: StyleProp<ViewStyle> }) {
   const theme = useFocoTheme();
   const title = event.taskTitle?.trim() || 'Sesión de enfoque';
   const status = event.interrupted && !event.completed ? 'Parcial' : event.completed ? 'Completada' : 'Registrada';
@@ -29,13 +29,13 @@ export function AgendaSessionBlock({ event, style }: { event: AgendaSessionEvent
         {
           backgroundColor: theme.colors.panelStrong,
           borderColor: theme.colors.border,
-          borderLeftColor: theme.colors.accent,
+          borderLeftColor: projectColor,
         },
         style,
       ]}
     >
       <Text numberOfLines={1} style={[typeScale.metadata, styles.title, { color: theme.colors.text, fontFamily: fontFamilies.semibold }]}>{title}</Text>
-      <Text numberOfLines={1} style={[typeScale.caption, { color: theme.colors.muted }]}>{event.projectName}</Text>
+      <View style={styles.projectLine}><View style={[styles.projectDot, { backgroundColor: projectColor }]} /><Text numberOfLines={1} style={[typeScale.caption, { color: theme.colors.muted }]}>{event.projectName}</Text></View>
       <View style={styles.metaRow}>
         <Text style={[typeScale.caption, styles.numeric, { color: theme.colors.subtle }]}>{formatClock(event.startedAt)}–{formatClock(event.endedAt)}</Text>
         <Text style={[typeScale.caption, styles.numeric, { color: theme.colors.text, fontFamily: fontFamilies.semibold }]}>{formatDuration(event.durationSec)}</Text>
@@ -54,6 +54,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   title: { lineHeight: 15 },
+  projectLine: { marginTop: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  projectDot: { width: 4, height: 4, borderRadius: 2 },
   metaRow: { marginTop: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
   numeric: { fontVariant: ['tabular-nums'] },
 });
