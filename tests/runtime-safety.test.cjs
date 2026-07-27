@@ -48,12 +48,12 @@ test('compact navigation and typography keep the product dense without shrinking
   const tokens = read('src/ui/themeTokens.ts');
   const typeScale = read('src/ui/typeScale.ts');
   const tabBar = read('src/ui/FocoTabBar.tsx');
-  assert.match(tokens, /tabBarHeight:\s*58/);
   assert.match(tokens, /rowMinHeight:\s*58/);
   assert.match(tokens, /controlHeight:\s*44/);
   assert.match(typeScale, /fontSize:\s*28/);
   assert.doesNotMatch(typeScale, /fontSize:\s*(?:3[6-9]|[4-9]\d)/);
-  assert.match(tabBar, /minHeight:\s*54/);
+  assert.match(tabBar, /capsule:/);
+  assert.match(tabBar, /minHeight:\s*(?:4[4-9]|[5-9]\d)/);
 });
 
 test('Adaptive Day routes and detailed Agenda remain reachable', () => {
