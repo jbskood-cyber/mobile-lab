@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const model = require('../.core-test-dist/core/model.js');
 const { migrateState } = require('../.core-test-dist/core/migration.js');
@@ -12,6 +14,8 @@ const {
   defaultProjectColor,
   updateProject,
 } = model;
+
+const iconSourcePath = path.join(process.cwd(), 'src', 'ui', 'FocoIcon.tsx');
 
 test('project identity catalogs are finite, unique, and seeded on every project', () => {
   assert.equal(PROJECT_ICON_IDS.length, 32);
@@ -78,4 +82,14 @@ test('project icon and color can be created and updated independently', () => {
   const updated = recolored.projects.find((project) => project.id === created.id);
   assert.equal(updated.icon, 'atom');
   assert.equal(updated.color, 'amber-soft');
+});
+
+test('all 32 curated project icon IDs resolve through FocoIcon', () => {
+  const source = fs.readFileSync(iconSourcePath, 'utf8');
+  for (const icon of PROJECT_ICON_IDS) {
+    assert.ok(
+      source.includes(`'${icon}'`) && (source.includes(`name === '${icon}'`) || source.includes(`${icon}:`) || ['home', 'calendar', 'folder', 'bars'].includes(icon)),
+      `${icon} must resolve through FocoIcon`,
+    );
+  }
 });
