@@ -28,8 +28,8 @@ export function RoutinesSheet({ visible, onClose }: { visible: boolean; onClose:
 
   return (
     <>
-      <FocoSheet visible={visible} title="Rutinas" subtitle="Repite procesos sin volver a configurarlos." onClose={onClose} footer={<><SheetButton label="Cerrar" variant="secondary" onPress={onClose} /><SheetButton label="Nueva" onPress={() => openEditor()} /></>}>
-        {state.routines.length === 0 ? <View style={styles.empty}><FocoIcon name="repeat" size={28} color={theme.colors.text} /><Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Crea tu primera rutina</Text><Text style={[styles.emptyCopy, { color: theme.colors.muted }]}>Guarda una secuencia de pasos, duración y frecuencia para reutilizarla.</Text></View> : state.routines.map((routine) => (
+      <FocoSheet visible={visible} title="Rutinas" subtitle="Plantillas que crean tareas recurrentes o cuando las necesitas." onClose={onClose} footer={<><SheetButton label="Cerrar" variant="secondary" onPress={onClose} /><SheetButton label="Nueva" onPress={() => openEditor()} /></>}>
+        {state.routines.length === 0 ? <View style={styles.empty}><FocoIcon name="repeat" size={28} color={theme.colors.text} /><Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Crea tu primera rutina</Text><Text style={[styles.emptyCopy, { color: theme.colors.muted }]}>Define duración, foco y frecuencia; FOCO crea la tarea por ti.</Text></View> : state.routines.map((routine) => (
           <View key={routine.id} style={[styles.row, { borderBottomColor: theme.colors.borderSoft, opacity: routine.paused ? 0.58 : 1 }]}>
             <Pressable onPress={() => openEditor(routine)} style={({ pressed }) => [styles.copy, pressed && pressedStyle]}>
               <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>{routine.name}</Text>
@@ -38,7 +38,7 @@ export function RoutinesSheet({ visible, onClose }: { visible: boolean; onClose:
             </Pressable>
             <View style={styles.actions}>
               <Pressable accessibilityLabel={routine.paused ? `Reactivar ${routine.name}` : `Pausar ${routine.name}`} onPress={() => toggleRoutinePaused(routine.id)} style={({ pressed }) => [styles.icon, { borderColor: theme.colors.border }, pressed && pressedStyle]}><FocoIcon name={routine.paused ? 'play' : 'pause'} size={16} color={theme.colors.text} /></Pressable>
-              <Pressable accessibilityLabel={`Generar ${routine.name} para hoy`} disabled={routine.paused} onPress={() => generate(routine)} style={({ pressed }) => [styles.generate, { backgroundColor: theme.colors.inverse }, routine.paused && styles.disabled, pressed && pressedStyle]}><FocoIcon name="plus" size={17} color={theme.colors.inverseText} /></Pressable>
+              <Pressable accessibilityLabel={`Crear tarea de ${routine.name} para hoy`} disabled={routine.paused} onPress={() => generate(routine)} style={({ pressed }) => [styles.generate, { backgroundColor: theme.colors.inverse }, routine.paused && styles.disabled, pressed && pressedStyle]}><FocoIcon name="plus" size={15} color={theme.colors.inverseText} /><Text style={[styles.generateText, { color: theme.colors.inverseText }]}>Crear hoy</Text></Pressable>
             </View>
           </View>
         ))}
@@ -59,9 +59,10 @@ const styles = StyleSheet.create({
   title: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13.5, lineHeight: 18 },
   meta: { fontFamily: 'InstrumentSans_400Regular', fontSize: 10.5, lineHeight: 14, marginTop: 2 },
   firstStep: { fontFamily: 'InstrumentSans_400Regular', fontSize: 9.5, lineHeight: 13, marginTop: 2 },
-  actions: { flexDirection: 'row', gap: 6 },
+  actions: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   icon: { width: 40, height: 40, borderRadius: 11, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
-  generate: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  generate: { minWidth: 76, height: 40, borderRadius: 20, paddingHorizontal: 11, flexDirection: 'row', gap: 5, alignItems: 'center', justifyContent: 'center' },
+  generateText: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 9.5, lineHeight: 13 },
   disabled: { opacity: 0.3 },
   empty: { minHeight: 180, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
   emptyTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 15, lineHeight: 20, marginTop: 10 },
