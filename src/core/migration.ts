@@ -2,20 +2,22 @@ import {
   createInitialState,
   defaultFocusPreferences,
   defaultPlanningPreferences,
+  defaultProjectColor,
+  isProjectColor,
+  isProjectIcon,
   normalizeRecurrence,
   type AppearancePreference,
   type FocoState,
   type FocusSession,
   type Project,
-  type ProjectIcon,
   type RoutineTemplate,
   type Task,
   type TaskPriority,
 } from './model';
 
-type LegacyProject = Partial<Project> & { id?: string; name?: string; icon?: ProjectIcon; archived?: boolean; createdAt?: number };
+type LegacyProject = Partial<Omit<Project, 'icon' | 'color'>> & { id?: string; name?: string; icon?: unknown; color?: unknown; archived?: boolean; createdAt?: number };
 type LegacyTask = Partial<Task> & { id?: string; title?: string; projectId?: string; priority?: TaskPriority; createdAt?: number };
-type LegacySession = Partial<FocusSession> & { id?: string; projectId?: string; mode?: 'pomodoro' | 'stopwatch'; startedAt?: number; endedAt?: number; durationSec?: number };
+type LegacySession = Partial<FocusSession> & { id?: string; projectId?: string; mode?: 'pomodoro' | 'timer' | 'stopwatch'; startedAt?: number; endedAt?: number; durationSec?: number };
 type LegacyRoutine = Partial<RoutineTemplate> & { id?: string; name?: string; projectId?: string; createdAt?: number };
 
 function safeNumber(value: unknown, fallback: number) {
@@ -28,13 +30,15 @@ function optionalNumber(value: unknown) {
 
 function migrateProject(project: LegacyProject, index: number, now: number): Project {
   const createdAt = safeNumber(project.createdAt, now);
+  const sortOrder = safeNumber(project.sortOrder, index);
   return {
     id: project.id || `project-migrated-${index + 1}`,
     name: project.name?.trim() || `Proyecto ${index + 1}`,
-    icon: project.icon ?? 'grid',
+    icon: isProjectIcon(project.icon) ? project.icon : 'grid',
+    color: isProjectColor(project.color) ? project.color : defaultProjectColor(sortOrder),
     archived: Boolean(project.archived),
     description: project.description?.trim() ?? '',
-    sortOrder: safeNumber(project.sortOrder, index),
+    sortOrder,
     createdAt,
     updatedAt: safeNumber(project.updatedAt, createdAt),
   };
