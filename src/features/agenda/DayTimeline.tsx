@@ -58,6 +58,7 @@ export function DayTimeline({ state, day, onTask, onSlot }: {
         <Text style={[styles.laneLabel, { color: theme.colors.muted }]}>Plan</Text>
         <Text style={[styles.laneLabel, styles.realLaneLabel, { color: theme.colors.muted }]}>Real</Text>
       </View>
+      <Text style={[styles.timelineExplanation, { color: theme.colors.subtle }]}>Plan = horario previsto · Real = tiempo registrado, incluso fuera del horario.</Text>
       <View style={[styles.timeline, { height, borderColor: theme.colors.borderSoft }]}> 
         {hours.map((hour, index) => {
           const top = index * 60 * MINUTE_HEIGHT;
@@ -126,6 +127,7 @@ const styles = StyleSheet.create({
   laneHeader: { minHeight: 24, flexDirection: 'row', alignItems: 'center', paddingLeft: 54, paddingRight: 5 },
   laneLabel: { width: '50%', fontFamily: 'InstrumentSans_600SemiBold', fontSize: 9.5, lineHeight: 12, textTransform: 'uppercase', letterSpacing: 0.55 },
   realLaneLabel: { textAlign: 'right' },
+  timelineExplanation: { fontFamily: 'InstrumentSans_400Regular', fontSize: 9.5, lineHeight: 13, marginBottom: 6, paddingLeft: 54 },
   timeline: { position: 'relative', borderBottomWidth: StyleSheet.hairlineWidth },
   hourRow: { position: 'absolute', left: 0, right: 0, borderTopWidth: StyleSheet.hairlineWidth },
   hourLabel: { width: 46, paddingTop: 3, fontFamily: 'InstrumentSans_400Regular', fontSize: 9.5, lineHeight: 12, fontVariant: ['tabular-nums'] },
