@@ -12,16 +12,18 @@ import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 import { useFocoUI } from '@/src/ui/FocoUIContext';
 import { hapticImpact, hapticSelection, hapticSuccess, pressedStyle } from '@/src/ui/premium';
 import { ProjectEditorSheet } from './ProjectEditorSheet';
+import { ProjectTaskAccordion } from './ProjectTaskAccordion';
 
 export function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useFocoTheme();
-  const { state, completeTask, reopenTask, deleteTask, toggleProjectArchived } = useFocoStore();
+  const { state, completeTask, reopenTask, deleteTask, toggleProjectArchived, addSubtask, toggleSubtask } = useFocoStore();
   const { showUndo } = useFocoUI();
   const [taskEditorOpen, setTaskEditorOpen] = useState(false);
   const [projectEditorOpen, setProjectEditorOpen] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(() => new Set());
   const project = state.projects.find((item) => item.id === id);
   const tasks = useMemo(() => state.tasks.filter((task) => task.projectId === id).sort((a, b) => Number(a.completed) - Number(b.completed) || (a.plannedStartAt ?? a.dueAt ?? Number.MAX_SAFE_INTEGER) - (b.plannedStartAt ?? b.dueAt ?? Number.MAX_SAFE_INTEGER)), [id, state.tasks]);
   const openTasks = tasks.filter((task) => !task.completed);
@@ -41,6 +43,12 @@ export function ProjectDetailScreen() {
     showUndo(`${task.title} completada`, () => { reopenTask(task.id); if (result.generatedTask) deleteTask(result.generatedTask.id); });
   };
   const archive = () => { toggleProjectArchived(project.id); hapticSelection(); showUndo(project.archived ? 'Proyecto restaurado' : 'Proyecto archivado', () => toggleProjectArchived(project.id)); if (!project.archived) router.back(); };
+  const toggleExpanded = (taskId: string) => setExpandedTaskIds((current) => {
+    const next = new Set(current);
+    if (next.has(taskId)) next.delete(taskId);
+    else next.add(taskId);
+    return next;
+  });
 
   return (
     <>
@@ -52,7 +60,20 @@ export function ProjectDetailScreen() {
           <View style={styles.actions}><Action icon="plus" label="Tarea" onPress={() => setTaskEditorOpen(true)} primary /><Action icon="play" label="Enfocar" onPress={() => { hapticImpact(); router.push({ pathname: '/(tabs)/focus', params: { projectId: project.id } }); }} /><Action icon="archive" label={project.archived ? 'Restaurar' : 'Archivar'} onPress={archive} /></View>
 
           <SectionHeader title="Pendientes" detail={String(openTasks.length)} />
-          <View style={[styles.list, { borderTopColor: theme.colors.borderSoft }]}>{openTasks.length > 0 ? openTasks.map((task) => <TaskRow key={task.id} task={task} projectName={projectMap.get(task.projectId) ?? project.name} completedPomodoros={pomodoros.get(task.id) ?? 0} onPress={() => router.push({ pathname: '/task/[id]', params: { id: task.id } })} onToggle={() => toggleTask(task)} />) : <Empty text="No quedan tareas pendientes." />}</View>
+          <View style={[styles.list, { borderTopColor: theme.colors.borderSoft }]}>{openTasks.length > 0 ? openTasks.map((task) => (
+            <ProjectTaskAccordion
+              key={task.id}
+              task={task}
+              projectName={projectMap.get(task.projectId) ?? project.name}
+              completedPomodoros={pomodoros.get(task.id) ?? 0}
+              expanded={expandedTaskIds.has(task.id)}
+              onToggleExpanded={() => toggleExpanded(task.id)}
+              onToggleTask={() => toggleTask(task)}
+              onOpenDetails={() => router.push({ pathname: '/task/[id]', params: { id: task.id } })}
+              onToggleSubtask={toggleSubtask}
+              onAddSubtask={addSubtask}
+            />
+          )) : <Empty text="No quedan tareas pendientes." />}</View>
 
           <Pressable accessibilityRole="button" onPress={() => setShowCompleted((value) => !value)} style={({ pressed }) => [styles.completedHeader, { borderBottomColor: theme.colors.borderSoft }, pressed && pressedStyle]}><View><Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Completadas</Text><Text style={[styles.sectionDetail, { color: theme.colors.muted }]}>{completedTasks.length} tareas</Text></View><FocoIcon name={showCompleted ? 'chevron-down' : 'chevron-right'} size={17} color={theme.colors.muted} /></Pressable>
           {showCompleted ? <View style={[styles.list, { borderTopColor: theme.colors.borderSoft }]}>{completedTasks.map((task) => <TaskRow key={task.id} task={task} projectName={project.name} completedPomodoros={pomodoros.get(task.id) ?? 0} onPress={() => router.push({ pathname: '/task/[id]', params: { id: task.id } })} onToggle={() => toggleTask(task)} />)}</View> : null}
