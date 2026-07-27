@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FOCO_RUNTIME_FINGERPRINT } from '@/src/core/runtimeFingerprint';
 import { useFocoStore } from '@/src/core/FocoStore';
 import { FocoIcon, type IconName } from './FocoIcon';
 import { FocoSheet, SheetButton } from './FocoSheet';
@@ -13,7 +14,7 @@ type DestinationHref = '/(tabs)' | '/(tabs)/agenda' | '/(tabs)/focus' | '/(tabs)
 const destinations: Array<{ label: string; detail: string; icon: IconName; href: DestinationHref }> = [
   { label: 'Hoy', detail: 'Plan adaptativo', icon: 'home', href: '/(tabs)' },
   { label: 'Agenda', detail: 'Calendario y línea temporal', icon: 'calendar', href: '/(tabs)/agenda' },
-  { label: 'Enfoque', detail: 'Pomodoro y cronómetro', icon: 'circle', href: '/(tabs)/focus' },
+  { label: 'Enfoque', detail: 'Pomodoro, temporizador y cronómetro', icon: 'circle', href: '/(tabs)/focus' },
   { label: 'Proyectos', detail: 'Áreas y resultados', icon: 'folder', href: '/(tabs)/projects' },
   { label: 'Progreso', detail: 'Tendencias e historial', icon: 'bars', href: '/(tabs)/stats' },
   { label: 'Impulso', detail: 'Empezar con una sola decisión', icon: 'flame', href: '/momentum' },
@@ -67,7 +68,7 @@ export function FocoAppMenu() {
         </View>
       )}
 
-      <Text style={[styles.version, { color: theme.colors.subtle }]}>FOCO {Constants.expoConfig?.version ?? '0.4.0'} · Offline</Text>
+      <Text style={[styles.version, { color: theme.colors.subtle }]}>FOCO {Constants.expoConfig?.version ?? '0.4.0'} · Offline{__DEV__ ? ` · ${FOCO_RUNTIME_FINGERPRINT}` : ''}</Text>
     </FocoSheet>
   );
 }
