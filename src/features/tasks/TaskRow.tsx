@@ -6,7 +6,7 @@ import { FocoIcon } from '@/src/ui/FocoIcon';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 import { pressedStyle } from '@/src/ui/premium';
 
-export function TaskRow({ task, projectName, completedPomodoros = 0, onPress, onToggle }: { task: Task; projectName: string; completedPomodoros?: number; onPress: () => void; onToggle: () => void }) {
+export function TaskRow({ task, projectName, projectColor, completedPomodoros = 0, onPress, onToggle }: { task: Task; projectName: string; projectColor?: string; completedPomodoros?: number; onPress: () => void; onToggle: () => void }) {
   const theme = useFocoTheme();
   const subtaskDone = task.subtasks.filter((subtask) => subtask.completed).length;
   const anchor = task.plannedStartAt ?? task.dueAt;
@@ -19,6 +19,7 @@ export function TaskRow({ task, projectName, completedPomodoros = 0, onPress, on
       <Pressable accessibilityRole="button" accessibilityLabel={`Abrir ${task.title}`} onPress={onPress} style={({ pressed }) => [styles.content, pressed && styles.pressed]}>
         <View style={styles.titleLine}><Text style={[styles.title, { color: task.completed ? theme.colors.muted : theme.colors.text }]} numberOfLines={2}>{task.title}</Text>{task.favorite ? <FocoIcon name="star" size={14} color={theme.colors.text} /> : null}</View>
         <View style={styles.metaRow}>
+          {projectColor ? <View style={[styles.projectMarker, { backgroundColor: projectColor }]} /> : null}
           <Text style={[styles.meta, { color: theme.colors.muted }]} numberOfLines={1}>{projectName}</Text>
           <View style={[styles.dot, { backgroundColor: theme.colors.subtle }]} />
           <Text style={[styles.meta, { color: overdue ? theme.colors.danger : theme.colors.muted }]}>{getTaskScheduleLabel(task)}</Text>
@@ -43,6 +44,7 @@ const styles = StyleSheet.create({
   title: { flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, lineHeight: 18 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4, marginTop: 3 },
   meta: { maxWidth: 112, fontFamily: 'InstrumentSans_400Regular', fontSize: 9.8, lineHeight: 13, fontVariant: ['tabular-nums'] },
+  projectMarker: { width: 5, height: 5, borderRadius: 3 },
   dot: { width: 3, height: 3, borderRadius: 2 },
   trailing: { width: 38, minHeight: 56, alignItems: 'center', justifyContent: 'center' },
 });

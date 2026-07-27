@@ -9,6 +9,7 @@ import { FocoIcon, type IconName } from '@/src/ui/FocoIcon';
 import { FocoScreen, SectionTitle } from '@/src/ui/FocoShell';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 import { hapticSelection, pressedStyle } from '@/src/ui/premium';
+import { resolveProjectColor } from '@/src/ui/projectColors';
 
 type Filter = 'Activos' | 'Archivados';
 
@@ -39,7 +40,8 @@ function ProjectRow({ project, onPress }: { project: Project; onPress: () => voi
   const { state } = useFocoStore();
   const metrics = useMemo(() => getProjectMetrics(state, project.id), [project.id, state]);
   const openTasks = metrics.taskCount - metrics.completedCount;
-  return <Pressable accessibilityRole="button" accessibilityLabel={`Abrir ${project.name}`} onPress={onPress} style={({ pressed }) => [styles.row, { borderBottomColor: theme.colors.borderSoft }, pressed && styles.rowPressed]}><View style={[styles.icon, { backgroundColor: theme.colors.panelStrong }]}><FocoIcon name={project.icon as IconName} size={21} color={theme.colors.text} /></View><View style={styles.copy}><View style={styles.titleLine}><Text style={[styles.name, { color: theme.colors.text }]} numberOfLines={1}>{project.name}</Text><Text style={[styles.progress, { color: theme.colors.text }]}>{Math.round(metrics.progress * 100)}%</Text></View><Text style={[styles.meta, { color: theme.colors.muted }]}>{openTasks} pendientes · {metrics.completedPomodoros}/{metrics.plannedPomodoros} foco · {formatDuration(metrics.focusSeconds, true)}</Text><View style={[styles.track, { backgroundColor: theme.colors.panelStrong }]}><View style={[styles.fill, { width: `${Math.round(metrics.progress * 100)}%`, backgroundColor: theme.colors.accent }]} /></View></View><FocoIcon name="chevron-right" size={16} color={theme.colors.subtle} /></Pressable>;
+  const projectColor = resolveProjectColor(project.color, theme.mode);
+  return <Pressable accessibilityRole="button" accessibilityLabel={`Abrir ${project.name}`} onPress={onPress} style={({ pressed }) => [styles.row, { borderBottomColor: theme.colors.borderSoft }, pressed && styles.rowPressed]}><View style={[styles.icon, { backgroundColor: theme.colors.panelStrong }]}><FocoIcon name={project.icon as IconName} size={21} color={projectColor} /></View><View style={styles.copy}><View style={styles.titleLine}><Text style={[styles.name, { color: theme.colors.text }]} numberOfLines={1}>{project.name}</Text><Text style={[styles.progress, { color: theme.colors.text }]}>{Math.round(metrics.progress * 100)}%</Text></View><Text style={[styles.meta, { color: theme.colors.muted }]}>{openTasks} pendientes · {metrics.completedPomodoros}/{metrics.plannedPomodoros} foco · {formatDuration(metrics.focusSeconds, true)}</Text><View style={[styles.track, { backgroundColor: theme.colors.panelStrong }]}><View style={[styles.fill, { width: `${Math.round(metrics.progress * 100)}%`, backgroundColor: projectColor }]} /></View></View><FocoIcon name="chevron-right" size={16} color={theme.colors.subtle} /></Pressable>;
 }
 
 const styles = StyleSheet.create({

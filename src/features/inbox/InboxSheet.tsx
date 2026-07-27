@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useFocoStore } from '@/src/core/FocoStore';
 import { atLocalTime, startOfLocalDay, type Task } from '@/src/core/model';
+import { FocoEmptyState } from '@/src/ui/FocoEmptyState';
 import { FocoIcon } from '@/src/ui/FocoIcon';
 import { FocoSheet, SheetButton } from '@/src/ui/FocoSheet';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
@@ -35,7 +36,7 @@ export function InboxSheet({ visible, onClose, onOpenTask }: { visible: boolean;
         <Pressable accessibilityLabel="Guardar en Inbox" disabled={!draft.trim()} onPress={capture} style={({ pressed }) => [styles.add, { backgroundColor: theme.colors.inverse }, !draft.trim() && styles.disabled, pressed && pressedStyle]}><FocoIcon name="plus" size={18} color={theme.colors.inverseText} /></Pressable>
       </View>
       <Text style={[styles.count, { color: theme.colors.muted }]}>{inbox.length} {inbox.length === 1 ? 'captura' : 'capturas'}</Text>
-      {inbox.length === 0 ? <View style={styles.empty}><Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Inbox vacío</Text><Text style={[styles.emptyCopy, { color: theme.colors.muted }]}>Las ideas rápidas aparecerán aquí hasta que las planifiques.</Text></View> : inbox.map((task) => (
+      {inbox.length === 0 ? <FocoEmptyState state="inbox" title="Inbox vacío" copy="Las ideas rápidas aparecerán aquí hasta que las planifiques." /> : inbox.map((task) => (
         <View key={task.id} style={[styles.row, { borderBottomColor: theme.colors.borderSoft }]}>
           <Pressable onPress={() => onOpenTask(task)} style={({ pressed }) => [styles.copy, pressed && pressedStyle]}>
             <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={2}>{task.title}</Text>
@@ -60,7 +61,4 @@ const styles = StyleSheet.create({
   meta: { fontFamily: 'InstrumentSans_400Regular', fontSize: 10.5, lineHeight: 14, marginTop: 2 },
   today: { minHeight: 40, borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9 },
   todayText: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 10.5, lineHeight: 14 },
-  empty: { minHeight: 140, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 26 },
-  emptyTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 18 },
-  emptyCopy: { fontFamily: 'InstrumentSans_400Regular', fontSize: 11.5, lineHeight: 16, textAlign: 'center', marginTop: 3 },
 });

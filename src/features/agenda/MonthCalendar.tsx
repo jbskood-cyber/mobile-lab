@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { buildMonthGrid, shiftMonth } from '@/src/core/calendar';
+import { registerCalendarTap, type CalendarTapState } from '@/src/core/calendarTap';
 import type { FocoState } from '@/src/core/model';
 import { FocoIcon } from '@/src/ui/FocoIcon';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
@@ -10,17 +11,38 @@ import type { FocoTheme } from '@/src/ui/themeTokens';
 
 const weekdays = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
 
-export function MonthCalendar({ state, anchor, selected, onAnchor, onSelect }: {
+export function MonthCalendar({ state, anchor, selected, onAnchor, onSelect, onOpenDay }: {
   state: FocoState;
   anchor: number;
   selected: number;
   onAnchor: (value: number) => void;
   onSelect: (value: number) => void;
+  onOpenDay: (value: number) => void;
 }) {
   const theme = useFocoTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const days = useMemo(() => buildMonthGrid(state, anchor), [anchor, state]);
+  const lastTap = useRef<CalendarTapState>(null);
+  const suppressPress = useRef<number | null>(null);
   const monthLabel = new Date(anchor).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }).replace(/^./, (value) => value.toUpperCase());
+
+  const handleDayPressIn = (timestamp: number) => {
+    const result = registerCalendarTap(lastTap.current, timestamp, Date.now());
+    lastTap.current = result.next;
+    if (result.openDay) {
+      suppressPress.current = timestamp;
+      onOpenDay(timestamp);
+    }
+  };
+
+  const handleDayPress = (timestamp: number) => {
+    if (suppressPress.current === timestamp) {
+      suppressPress.current = null;
+      return;
+    }
+    onSelect(timestamp);
+    hapticSelection();
+  };
 
   return (
     <View style={styles.root}>
@@ -39,7 +61,9 @@ export function MonthCalendar({ state, anchor, selected, onAnchor, onSelect }: {
               accessibilityRole="radio"
               accessibilityState={{ checked: active }}
               accessibilityLabel={`${new Date(day.timestamp).toLocaleDateString('es-MX')}, ${day.taskCount} tareas`}
-              onPress={() => { onSelect(day.timestamp); hapticSelection(); }}
+              accessibilityHint="Toca una vez para seleccionar; dos veces para abrir el día"
+              onPressIn={() => handleDayPressIn(day.timestamp)}
+              onPress={() => handleDayPress(day.timestamp)}
               style={({ pressed }) => [styles.cell, active && styles.cellActive, pressed && pressedStyle]}
             >
               <Text style={[styles.day, !day.inMonth && styles.outside, active && styles.dayActive]}>{day.day}</Text>

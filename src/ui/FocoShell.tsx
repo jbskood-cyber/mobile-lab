@@ -32,7 +32,7 @@ export function FocoScreen({
   children,
 }: ScreenProps) {
   const scrollRef = useRef<ScrollView>(null);
-  const { openAppMenu, registerScrollTarget } = useFocoUI();
+  const { registerScrollTarget } = useFocoUI();
   const theme = useFocoTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
@@ -43,16 +43,13 @@ export function FocoScreen({
 
   const content = (
     <View style={[styles.content, { paddingBottom: contentBottomPadding }]}> 
-      <View style={styles.toolbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Abrir menú de FOCO" hitSlop={8} onPress={openAppMenu} style={({ pressed }) => [styles.iconButton, pressed && pressedStyle]}>
-          <FocoIcon name="menu" size={22} color={theme.colors.text} />
-        </Pressable>
-        {rightIcon ? (
+      {rightIcon ? (
+        <View style={styles.toolbar}>
           <Pressable accessibilityRole="button" accessibilityLabel={rightAccessibilityLabel} hitSlop={8} style={({ pressed }) => [styles.iconButton, pressed && pressedStyle]} onPress={onRightPress}>
             <FocoIcon name={rightIcon} size={22} color={theme.colors.text} />
           </Pressable>
-        ) : <View style={styles.iconButton} />}
-      </View>
+        </View>
+      ) : <View style={styles.topSpacer} />}
       <Text style={styles.title} maxFontSizeMultiplier={1.18}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle} maxFontSizeMultiplier={1.2}>{subtitle}</Text> : null}
       {children}
@@ -100,7 +97,8 @@ function makeStyles(theme: FocoTheme) {
     scroll: { flex: 1 },
     scrollContent: { flexGrow: 1 },
     content: { paddingHorizontal: theme.density.pageHorizontal },
-    toolbar: { height: theme.density.toolbarHeight, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    toolbar: { height: theme.density.toolbarHeight, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
+    topSpacer: { height: 10 },
     iconButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
     title: { color: theme.colors.text, ...typeScale.display },
     subtitle: { color: theme.colors.muted, ...typeScale.body, marginTop: 0 },

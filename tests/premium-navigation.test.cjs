@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const tabBarPath = path.join(process.cwd(), 'src', 'ui', 'FocoTabBar.tsx');
+const tabsLayoutPath = path.join(process.cwd(), 'app', '(tabs)', '_layout.tsx');
 const premiumPath = path.join(process.cwd(), 'src', 'ui', 'premium.ts');
 const pressablePath = path.join(process.cwd(), 'src', 'ui', 'FocoPressable.tsx');
 const motionPath = path.join(process.cwd(), 'src', 'ui', 'motion.ts');
@@ -27,9 +28,9 @@ function sourceFiles(root) {
   return matches;
 }
 
-test('routine bottom-tab navigation does not trigger selection haptics', () => {
+test('routine primary navigation does not trigger selection haptics', () => {
   const source = read(tabBarPath);
-  assert.doesNotMatch(source, /hapticSelection\s*\(/, 'Bottom-tab navigation must stay haptic-free; reserve haptics for meaningful actions.');
+  assert.doesNotMatch(source, /hapticSelection\s*\(/, 'Primary navigation must stay haptic-free; reserve haptics for meaningful actions.');
 });
 
 test('premium press feedback exposes restrained semantic variants', () => {
@@ -60,6 +61,25 @@ test('motion foundation centralizes semantic timings and reduced-motion resoluti
   assert.match(motion, /resolveMotionDuration/);
 });
 
+test('tab scenes use a restrained crossfade instead of snapping', () => {
+  const layout = read(tabsLayoutPath);
+  assert.doesNotMatch(layout, /animation:\s*'none'/);
+  assert.match(layout, /animation:\s*'fade'/);
+  assert.match(layout, /transitionSpec/);
+  assert.match(layout, /motion\.fast|motionDurations\.fast/);
+});
+
+test('reviewed navigation renders one quiet current-section capsule instead of five persistent items', () => {
+  const tabBar = read(tabBarPath);
+  assert.match(tabBar, /openAppMenu/);
+  assert.match(tabBar, /currentMeta/);
+  assert.match(tabBar, /capsule/);
+  assert.match(tabBar, /feedback="quiet"/);
+  assert.doesNotMatch(tabBar, /state\.routes\.map/);
+  assert.doesNotMatch(tabBar, /activeIndicator/);
+  assert.doesNotMatch(tabBar, /useSharedValue|useAnimatedStyle|withTiming/);
+});
+
 test('typography foundation exposes semantic roles and stable numeric variants', () => {
   const theme = read(themeTokensPath);
   assert.match(theme, /typeScale/);
@@ -88,7 +108,7 @@ test('no app source references the removed Manrope runtime family', () => {
   assert.deepEqual(legacy, [], `Legacy Manrope font references remain in: ${legacy.join(', ')}`);
 });
 
-test('navigation icons use one professional family with explicit active weight', () => {
+test('navigation icons keep one professional family in the current-section capsule', () => {
   const icon = read(iconPath);
   const tabBar = read(tabBarPath);
   assert.match(icon, /PHOSPHOR_NAV_ICONS/);
@@ -96,13 +116,15 @@ test('navigation icons use one professional family with explicit active weight',
   for (const iconName of ['home', 'calendar', 'circle', 'folder', 'bars']) {
     assert.match(icon, new RegExp(`${iconName}:`));
   }
-  assert.match(tabBar, /weight=\{focused \? 'fill' : 'regular'\}/);
+  assert.match(tabBar, /<FocoIcon/);
+  assert.match(tabBar, /name=\{currentMeta\.icon\}/);
+  assert.match(tabBar, /weight="fill"/);
 });
 
 test('primary shared controls use the same Phosphor icon language', () => {
   const icon = read(iconPath);
   assert.match(icon, /PHOSPHOR_CONTROL_ICONS/);
   for (const iconName of ['plus', 'sliders', 'play', 'pause', 'stop', 'more', 'chevron-right', 'chevron-left', 'chevron-down', 'search', 'check']) {
-    assert.match(icon, new RegExp(`['\"]?${iconName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['\"]?\s*:`));
+    assert.match(icon, new RegExp(`['"]?${iconName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]?\s*:`));
   }
 });

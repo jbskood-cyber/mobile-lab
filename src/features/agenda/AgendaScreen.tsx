@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { getAgendaBuckets, getTasksForDate, searchTasks } from '@/src/core/agenda';
 import { getTasksForCalendarDay } from '@/src/core/calendar';
@@ -13,7 +14,9 @@ import { FocoIcon } from '@/src/ui/FocoIcon';
 import { FocoScreen, SectionTitle } from '@/src/ui/FocoShell';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 import { useFocoUI } from '@/src/ui/FocoUIContext';
-import { hapticSelection, hapticSuccess, pressedStyle } from '@/src/ui/premium';
+import { motion } from '@/src/ui/motion';
+import { hapticSelection, hapticSuccess, pressedStyle, useReducedMotion } from '@/src/ui/premium';
+import { resolveProjectColor } from '@/src/ui/projectColors';
 import { DayTimeline } from './DayTimeline';
 import { MonthCalendar } from './MonthCalendar';
 
@@ -23,6 +26,7 @@ type SmartList = 'Hoy' | 'Próximas' | 'Inbox' | 'Completadas' | 'Todas';
 export function AgendaScreen() {
   const router = useRouter();
   const theme = useFocoTheme();
+  const reducedMotion = useReducedMotion();
   const { state, completeTask, reopenTask, deleteTask } = useFocoStore();
   const { showUndo } = useFocoUI();
   const [mode, setMode] = useState<AgendaMode>('Calendario');
@@ -34,7 +38,7 @@ export function AgendaScreen() {
   const [routinesOpen, setRoutinesOpen] = useState(false);
   const [draftStart, setDraftStart] = useState<number | undefined>();
   const buckets = useMemo(() => getAgendaBuckets(state), [state]);
-  const projectMap = useMemo(() => new Map(state.projects.map((project) => [project.id, project.name])), [state.projects]);
+  const projectMap = useMemo(() => new Map(state.projects.map((project) => [project.id, project])), [state.projects]);
   const pomodoros = useMemo(() => {
     const values = new Map<string, number>();
     for (const session of state.sessions) if (session.taskId && session.mode === 'pomodoro' && session.phase === 'focus' && session.completed) values.set(session.taskId, (values.get(session.taskId) ?? 0) + 1);
@@ -55,6 +59,12 @@ export function AgendaScreen() {
 
   const openTask = (task: Task) => router.push({ pathname: '/task/[id]', params: { id: task.id } });
   const openEditor = (start?: number) => { setDraftStart(start); setEditorOpen(true); };
+  const openCalendarDay = (value: number) => {
+    setSelectedDate(value);
+    setMonthAnchor(value);
+    setQuery('');
+    setMode('Día');
+  };
   const toggle = (task: Task) => {
     if (task.completed) return reopenTask(task.id);
     const result = completeTask(task.id);
@@ -63,20 +73,24 @@ export function AgendaScreen() {
     showUndo(`${task.title} completada`, () => { reopenTask(task.id); if (result.generatedTask) deleteTask(result.generatedTask.id); });
   };
 
-  const renderRows = (tasks: Task[]) => tasks.map((task) => <TaskRow key={task.id} task={task} projectName={projectMap.get(task.projectId) ?? 'Sin proyecto'} completedPomodoros={pomodoros.get(task.id) ?? 0} onPress={() => openTask(task)} onToggle={() => toggle(task)} />);
+  const renderRows = (tasks: Task[]) => tasks.map((task) => {
+    const project = projectMap.get(task.projectId);
+    return <TaskRow key={task.id} task={task} projectName={project?.name ?? 'Sin proyecto'} projectColor={project ? resolveProjectColor(project.color, theme.mode) : undefined} completedPomodoros={pomodoros.get(task.id) ?? 0} onPress={() => openTask(task)} onToggle={() => toggle(task)} />;
+  });
   const dateLabel = new Date(selectedDate).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, (value) => value.toUpperCase());
+  const modeEntering = reducedMotion ? undefined : FadeIn.duration(motion.fast);
 
   return (
     <>
       <FocoScreen title="Agenda" subtitle={dateLabel} screenKey="agenda" rightIcon="plus" rightAccessibilityLabel="Crear tarea" onRightPress={() => openEditor(mode === 'Día' ? selectedDate + 9 * 60 * 60 * 1000 : undefined)}>
-        <View style={[styles.search, { borderColor: theme.colors.border, backgroundColor: theme.colors.panel }]}>
+        <View style={[styles.search, { borderColor: theme.colors.border, backgroundColor: theme.colors.panel }]}> 
           <FocoIcon name="search" size={18} color={theme.colors.muted} />
           <TextInput value={query} onChangeText={(value) => { setQuery(value); if (value) setMode('Listas'); }} placeholder="Buscar tareas, notas o proyectos" placeholderTextColor={theme.colors.subtle} returnKeyType="search" style={[styles.searchInput, { color: theme.colors.text }]} />
           {query ? <Pressable accessibilityLabel="Limpiar búsqueda" onPress={() => setQuery('')} style={({ pressed }) => [styles.clear, pressed && pressedStyle]}><FocoIcon name="plus" size={16} color={theme.colors.muted} style={styles.closeIcon} /></Pressable> : null}
         </View>
 
         <View style={styles.modeRow}>
-          <View style={[styles.segmented, { backgroundColor: theme.colors.panelSoft, borderColor: theme.colors.borderSoft }]}>
+          <View style={[styles.segmented, { backgroundColor: theme.colors.panelSoft, borderColor: theme.colors.borderSoft }]}> 
             {(['Calendario', 'Día', 'Listas'] as AgendaMode[]).map((item) => <Pressable key={item} accessibilityRole="tab" accessibilityState={{ selected: mode === item }} onPress={() => { setMode(item); setQuery(''); hapticSelection(); }} style={({ pressed }) => [styles.segment, mode === item && { backgroundColor: theme.colors.inverse }, pressed && pressedStyle]}><Text style={[styles.segmentText, { color: mode === item ? theme.colors.inverseText : theme.colors.muted }]}>{item}</Text></Pressable>)}
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Abrir rutinas" onPress={() => { setRoutinesOpen(true); hapticSelection(); }} style={({ pressed }) => [styles.routinesButton, { backgroundColor: theme.colors.panel, borderColor: theme.colors.border }, pressed && pressedStyle]}>
@@ -85,34 +99,36 @@ export function AgendaScreen() {
           </Pressable>
         </View>
 
-        {mode === 'Calendario' ? (
-          <>
-            <MonthCalendar state={state} anchor={monthAnchor} selected={selectedDate} onAnchor={setMonthAnchor} onSelect={setSelectedDate} />
-            <SectionTitle title="Plan del día" detail={`${dayTasks.length} ${dayTasks.length === 1 ? 'elemento' : 'elementos'}`} />
-            {dayTasks.length > 0 ? renderRows(dayTasks) : <Empty title="Día disponible" copy="Toca + para planificar o abre la vista Día y toca una hora." />}
-          </>
-        ) : null}
+        <Animated.View key={mode} entering={modeEntering}>
+          {mode === 'Calendario' ? (
+            <>
+              <MonthCalendar state={state} anchor={monthAnchor} selected={selectedDate} onAnchor={setMonthAnchor} onSelect={setSelectedDate} onOpenDay={openCalendarDay} />
+              <SectionTitle title="Plan del día" detail={`${dayTasks.length} ${dayTasks.length === 1 ? 'elemento' : 'elementos'}`} />
+              {dayTasks.length > 0 ? renderRows(dayTasks) : <Empty title="Día disponible" copy="Toca + para planificar o abre la vista Día y toca una hora." />}
+            </>
+          ) : null}
 
-        {mode === 'Día' ? (
-          <>
-            <View style={styles.dayNavigator}>
-              <Pressable accessibilityLabel="Día anterior" onPress={() => setSelectedDate((value) => value - DAY_MS)} style={({ pressed }) => [styles.dayArrow, pressed && pressedStyle]}><FocoIcon name="chevron-left" size={18} color={theme.colors.muted} /></Pressable>
-              <Pressable onPress={() => setSelectedDate(startOfLocalDay(Date.now()))} style={({ pressed }) => [styles.todayButton, { borderColor: theme.colors.border }, pressed && pressedStyle]}><Text style={[styles.todayText, { color: theme.colors.text }]}>Hoy</Text></Pressable>
-              <Pressable accessibilityLabel="Día siguiente" onPress={() => setSelectedDate((value) => value + DAY_MS)} style={({ pressed }) => [styles.dayArrow, pressed && pressedStyle]}><FocoIcon name="chevron-right" size={18} color={theme.colors.muted} /></Pressable>
-            </View>
-            <DayTimeline state={state} day={selectedDate} onTask={openTask} onSlot={openEditor} />
-          </>
-        ) : null}
+          {mode === 'Día' ? (
+            <>
+              <View style={styles.dayNavigator}>
+                <Pressable accessibilityLabel="Día anterior" onPress={() => setSelectedDate((value) => value - DAY_MS)} style={({ pressed }) => [styles.dayArrow, pressed && pressedStyle]}><FocoIcon name="chevron-left" size={18} color={theme.colors.muted} /></Pressable>
+                <Pressable onPress={() => setSelectedDate(startOfLocalDay(Date.now()))} style={({ pressed }) => [styles.todayButton, { borderColor: theme.colors.border }, pressed && pressedStyle]}><Text style={[styles.todayText, { color: theme.colors.text }]}>Hoy</Text></Pressable>
+                <Pressable accessibilityLabel="Día siguiente" onPress={() => setSelectedDate((value) => value + DAY_MS)} style={({ pressed }) => [styles.dayArrow, pressed && pressedStyle]}><FocoIcon name="chevron-right" size={18} color={theme.colors.muted} /></Pressable>
+              </View>
+              <DayTimeline state={state} day={selectedDate} onTask={openTask} onSlot={openEditor} />
+            </>
+          ) : null}
 
-        {mode === 'Listas' ? (
-          <>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.smartLists}>
-              {(['Hoy', 'Próximas', 'Inbox', 'Completadas', 'Todas'] as SmartList[]).map((item) => <Pressable key={item} accessibilityRole="radio" accessibilityState={{ checked: smartList === item }} onPress={() => { setSmartList(item); setQuery(''); hapticSelection(); }} style={({ pressed }) => [styles.smartChip, { borderColor: theme.colors.border }, smartList === item && { backgroundColor: theme.colors.inverse, borderColor: theme.colors.inverse }, pressed && pressedStyle]}><Text style={[styles.smartText, { color: smartList === item ? theme.colors.inverseText : theme.colors.muted }]}>{item}</Text></Pressable>)}
-            </ScrollView>
-            <SectionTitle title={query ? 'Resultados' : smartList} detail={`${listTasks.length} ${listTasks.length === 1 ? 'tarea' : 'tareas'}`} />
-            {listTasks.length > 0 ? renderRows(listTasks) : <Empty title="Nada en esta vista" copy="Captura una tarea o cambia el filtro." />}
-          </>
-        ) : null}
+          {mode === 'Listas' ? (
+            <>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.smartLists}>
+                {(['Hoy', 'Próximas', 'Inbox', 'Completadas', 'Todas'] as SmartList[]).map((item) => <Pressable key={item} accessibilityRole="radio" accessibilityState={{ checked: smartList === item }} onPress={() => { setSmartList(item); setQuery(''); hapticSelection(); }} style={({ pressed }) => [styles.smartChip, { borderColor: theme.colors.border }, smartList === item && { backgroundColor: theme.colors.inverse, borderColor: theme.colors.inverse }, pressed && pressedStyle]}><Text style={[styles.smartText, { color: smartList === item ? theme.colors.inverseText : theme.colors.muted }]}>{item}</Text></Pressable>)}
+              </ScrollView>
+              <SectionTitle title={query ? 'Resultados' : smartList} detail={`${listTasks.length} ${listTasks.length === 1 ? 'tarea' : 'tareas'}`} />
+              {listTasks.length > 0 ? renderRows(listTasks) : <Empty title="Nada en esta vista" copy="Captura una tarea o cambia el filtro." />}
+            </>
+          ) : null}
+        </Animated.View>
       </FocoScreen>
       <TaskEditorSheet visible={editorOpen} defaultDueAt={draftStart ? draftStart + state.planning.defaultTaskDurationMinutes * 60_000 : selectedDate + 18 * 60 * 60 * 1000} defaultPlannedStartAt={draftStart} onClose={() => { setEditorOpen(false); setDraftStart(undefined); }} />
       <RoutinesSheet visible={routinesOpen} onClose={() => setRoutinesOpen(false)} />

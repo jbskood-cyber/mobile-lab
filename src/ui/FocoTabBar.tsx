@@ -6,9 +6,10 @@ import { FocoIcon, type IconName } from './FocoIcon';
 import { FocoPressable } from './FocoPressable';
 import { useFocoTheme } from './FocoThemeContext';
 import { useFocoUI } from './FocoUIContext';
-import { fontFamilies, typeScale } from './themeTokens';
 
-const routeMeta: Record<string, { label: string; icon: IconName }> = {
+type RouteMeta = { label: string; icon: IconName };
+const DEFAULT_ROUTE_META: RouteMeta = { label: 'Hoy', icon: 'home' };
+const routeMeta: Record<string, RouteMeta> = {
   index: { label: 'Hoy', icon: 'home' },
   agenda: { label: 'Agenda', icon: 'calendar' },
   focus: { label: 'Enfoque', icon: 'circle' },
@@ -16,53 +17,57 @@ const routeMeta: Record<string, { label: string; icon: IconName }> = {
   stats: { label: 'Progreso', icon: 'bars' },
 };
 
-export function FocoTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export function FocoTabBar({ state }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const theme = useFocoTheme();
-  const { keyboardVisible, overlayCount, appMenuVisible, focusImmersive, scrollToTop } = useFocoUI();
+  const { keyboardVisible, overlayCount, appMenuVisible, focusImmersive, openAppMenu } = useFocoUI();
+  const currentRoute = state.routes[state.index];
+  const currentMeta = routeMeta[currentRoute?.name ?? 'index'] ?? DEFAULT_ROUTE_META;
+
   if (keyboardVisible || overlayCount > 0 || appMenuVisible || focusImmersive) return null;
 
   return (
-    <View style={{ backgroundColor: theme.colors.bgRaised, paddingBottom: Math.max(insets.bottom, 4) }}>
-      <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.borderSoft }} />
-      <View style={{ height: theme.density.tabBarHeight, flexDirection: 'row', alignItems: 'center' }}>
-        {state.routes.map((route, index) => {
-          const focused = state.index === index;
-          const meta = routeMeta[route.name] ?? { label: route.name, icon: 'circle' as IconName };
-          const options = descriptors[route.key]?.options;
-          const onPress = () => {
-            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-            if (event.defaultPrevented) return;
-            if (focused) scrollToTop(route.name);
-            else navigation.navigate(route.name);
-          };
-          return (
-            <FocoPressable
-              key={route.key}
-              feedback="quiet"
-              accessibilityRole="tab"
-              accessibilityState={{ selected: focused }}
-              accessibilityLabel={options?.tabBarAccessibilityLabel ?? meta.label}
-              onPress={onPress}
-              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-              style={styles.item}
-            >
-              <FocoIcon
-                name={meta.icon}
-                size={focused ? 21 : 20}
-                color={focused ? theme.colors.text : theme.colors.inactive}
-                weight={focused ? 'fill' : 'regular'}
-              />
-              <Text style={[typeScale.caption, { color: focused ? theme.colors.text : theme.colors.inactive, fontFamily: focused ? fontFamilies.semibold : fontFamilies.medium }]} maxFontSizeMultiplier={1.08}>{meta.label}</Text>
-              {focused ? <View style={{ position: 'absolute', top: 0, width: 20, height: 2, borderRadius: 1, backgroundColor: theme.colors.accent }} /> : null}
-            </FocoPressable>
-          );
-        })}
-      </View>
+    <View pointerEvents="box-none" style={[styles.zone, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <FocoPressable
+        feedback="quiet"
+        accessibilityRole="button"
+        accessibilityLabel={`Abrir navegación. Sección actual: ${currentMeta.label}`}
+        onPress={openAppMenu}
+        style={[styles.capsule, { backgroundColor: theme.colors.inverse, borderColor: theme.colors.border }]}
+      >
+        <FocoIcon name={currentMeta.icon} size={18} color={theme.colors.inverseText} weight="fill" />
+        <Text style={[styles.capsuleLabel, { color: theme.colors.inverseText }]} numberOfLines={1}>{currentMeta.label}</Text>
+        <FocoIcon name="chevron-down" size={15} color={theme.colors.inverseText} style={styles.chevron} />
+      </FocoPressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  item: { flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  zone: {
+    minHeight: 62,
+    paddingTop: 5,
+    paddingHorizontal: 14,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  capsule: {
+    minHeight: 46,
+    maxWidth: 190,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  capsuleLabel: {
+    flexShrink: 1,
+    fontFamily: 'InstrumentSans_600SemiBold',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  chevron: { transform: [{ rotate: '180deg' }] },
 });

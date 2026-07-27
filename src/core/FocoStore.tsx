@@ -49,6 +49,7 @@ import {
   type FocusSession,
   type PlanningPreferences,
   type Project,
+  type ProjectColor,
   type ProjectIcon,
   type RoutineDraft,
   type RoutineTemplate,
@@ -90,8 +91,8 @@ type StoreValue = {
   toggleTask: (taskId: string) => void;
   deleteTask: (taskId: string) => void;
   restoreTask: (task: Task) => void;
-  addProject: (name: string, icon?: ProjectIcon) => Project | null;
-  updateProject: (projectId: string, patch: Partial<Pick<Project, 'name' | 'icon' | 'description' | 'archived' | 'sortOrder'>>) => void;
+  addProject: (name: string, icon?: ProjectIcon, color?: ProjectColor) => Project | null;
+  updateProject: (projectId: string, patch: Partial<Pick<Project, 'name' | 'icon' | 'color' | 'description' | 'archived' | 'sortOrder'>>) => void;
   toggleProjectArchived: (projectId: string) => void;
   addRoutine: (draft: RoutineDraft) => RoutineTemplate | null;
   updateRoutine: (routineId: string, patch: Partial<Omit<RoutineTemplate, 'id' | 'createdAt'>>) => void;
@@ -260,14 +261,14 @@ export function FocoStoreProvider({ children, fallback = null, onReady }: Provid
     });
   }, []);
 
-  const addProject = useCallback((name: string, icon?: ProjectIcon) => {
+  const addProject = useCallback((name: string, icon?: ProjectIcon, color?: ProjectColor) => {
     if (!state) return null;
-    const next = addProjectToState(state, name, icon);
+    const next = addProjectToState(state, name, icon, color);
     if (next === state) return null;
     setState(next);
     return next.projects[0] ?? null;
   }, [state]);
-  const updateProject = useCallback((projectId: string, patch: Partial<Pick<Project, 'name' | 'icon' | 'description' | 'archived' | 'sortOrder'>>) => setState((current) => current ? updateProjectInState(current, projectId, patch) : current), []);
+  const updateProject = useCallback((projectId: string, patch: Partial<Pick<Project, 'name' | 'icon' | 'color' | 'description' | 'archived' | 'sortOrder'>>) => setState((current) => current ? updateProjectInState(current, projectId, patch) : current), []);
   const toggleProjectArchived = useCallback((projectId: string) => setState((current) => current ? toggleProjectArchivedInState(current, projectId) : current), []);
 
   const addRoutine = useCallback((draft: RoutineDraft) => {

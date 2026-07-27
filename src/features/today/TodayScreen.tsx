@@ -9,11 +9,13 @@ import { InboxSheet } from '@/src/features/inbox/InboxSheet';
 import { ReplanSheet } from '@/src/features/replan/ReplanSheet';
 import { TaskEditorSheet } from '@/src/features/tasks/TaskEditorSheet';
 import { TaskRow } from '@/src/features/tasks/TaskRow';
+import { FocoEmptyState } from '@/src/ui/FocoEmptyState';
 import { FocoIcon } from '@/src/ui/FocoIcon';
 import { FocoScreen, SectionTitle } from '@/src/ui/FocoShell';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 import { useFocoUI } from '@/src/ui/FocoUIContext';
 import { hapticImpact, hapticSuccess, pressedStyle } from '@/src/ui/premium';
+import { resolveProjectColor } from '@/src/ui/projectColors';
 
 function todayLabel() {
   return new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, (value) => value.toUpperCase());
@@ -32,7 +34,7 @@ export function TodayScreen() {
   const plan = useMemo(() => buildDayPlan(state), [state]);
   const replan = useMemo(() => getReplanQueue(state), [state]);
   const momentum = useMemo(() => getMomentumTask(state), [state]);
-  const projectMap = useMemo(() => new Map(state.projects.map((project) => [project.id, project.name])), [state.projects]);
+  const projectMap = useMemo(() => new Map(state.projects.map((project) => [project.id, project])), [state.projects]);
   const completedToday = useMemo(() => state.tasks.filter((task) => task.completedAt !== undefined && task.completedAt >= startOfLocalDay(Date.now())), [state.tasks]);
   const focusToday = useMemo(() => state.sessions.filter((session) => session.phase === 'focus' && session.endedAt >= startOfLocalDay(Date.now())).reduce((sum, session) => sum + session.durationSec, 0), [state.sessions]);
   const taskPomodoros = useMemo(() => {
@@ -56,7 +58,10 @@ export function TodayScreen() {
     hapticSuccess();
     showUndo(`${task.title} completada`, () => { reopenTask(task.id); if (result.generatedTask) deleteTask(result.generatedTask.id); });
   };
-  const renderRows = (tasks: Task[]) => tasks.map((task) => <TaskRow key={task.id} task={task} projectName={projectMap.get(task.projectId) ?? 'Sin proyecto'} completedPomodoros={taskPomodoros.get(task.id) ?? 0} onPress={() => openTask(task)} onToggle={() => toggle(task)} />);
+  const renderRows = (tasks: Task[]) => tasks.map((task) => {
+    const project = projectMap.get(task.projectId);
+    return <TaskRow key={task.id} task={task} projectName={project?.name ?? 'Sin proyecto'} projectColor={project ? resolveProjectColor(project.color, theme.mode) : undefined} completedPomodoros={taskPomodoros.get(task.id) ?? 0} onPress={() => openTask(task)} onToggle={() => toggle(task)} />;
+  });
   const loadRatio = plan.capacityMinutes === 0 ? 0 : Math.min(1, (plan.scheduledMinutes + plan.flexibleMinutes) / plan.capacityMinutes);
 
   return (
@@ -75,26 +80,26 @@ export function TodayScreen() {
             <Text style={[styles.capacityTitle, { color: plan.overloadMinutes > 0 ? theme.colors.danger : theme.colors.text }]}>{plan.overloadMinutes > 0 ? `${plan.overloadMinutes} min de exceso` : `${plan.freeMinutes} min libres`}</Text>
             <Text style={[styles.capacityMeta, { color: theme.colors.muted }]}>{plan.scheduled.length} fijas · {plan.flexible.length} flexibles · {formatDuration(focusToday, true)} enfocado</Text>
           </View>
-          <View style={[styles.track, { backgroundColor: theme.colors.panelStrong }]}><View style={[styles.fill, { width: `${Math.round(loadRatio * 100)}%`, backgroundColor: plan.overloadMinutes > 0 ? theme.colors.danger : theme.colors.accent }]} /></View>
+          <View style={[styles.track, { backgroundColor: theme.colors.panelStrong }]}><View style={[styles.fill, { width: `${Math.round(loadRatio * 100)}%`, backgroundColor: plan.overloadMinutes > 0 ? theme.colors.danger : theme.colors.text }]} /></View>
         </View>
 
         {replan.length > 0 ? (
-          <Pressable accessibilityRole="button" onPress={() => setReplanOpen(true)} style={({ pressed }) => [styles.replan, { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent }, pressed && pressedStyle]}>
+          <Pressable accessibilityRole="button" onPress={() => setReplanOpen(true)} style={({ pressed }) => [styles.replan, { backgroundColor: theme.colors.panelSoft, borderColor: theme.colors.border }, pressed && pressedStyle]}>
             <View><Text style={[styles.replanTitle, { color: theme.colors.text }]}>{replan.length} pendientes por recuperar</Text><Text style={[styles.replanCopy, { color: theme.colors.muted }]}>Decide qué pasa con ellas sin perderlas.</Text></View>
-            <FocoIcon name="chevron-right" size={17} color={theme.colors.accent} />
+            <FocoIcon name="chevron-right" size={17} color={theme.colors.text} />
           </Pressable>
         ) : null}
 
-        <SectionTitle title="Ahora" detail={momentum ? projectMap.get(momentum.projectId) : undefined} action={momentum ? <Pressable accessibilityLabel="Abrir modo Impulso" onPress={() => router.push('/momentum')} style={({ pressed }) => [styles.impulseLink, pressed && pressedStyle]}><Text style={[styles.impulseText, { color: theme.colors.accent }]}>Impulso</Text></Pressable> : undefined} />
+        <SectionTitle title="Ahora" detail={momentum ? projectMap.get(momentum.projectId)?.name : undefined} action={momentum ? <Pressable accessibilityLabel="Abrir modo Impulso" onPress={() => router.push('/momentum')} style={({ pressed }) => [styles.impulseLink, pressed && pressedStyle]}><Text style={[styles.impulseText, { color: theme.colors.text }]}>Impulso</Text></Pressable> : undefined} />
         {momentum ? (
           <Pressable accessibilityRole="button" accessibilityLabel={`Enfocarse en ${momentum.title}`} onPress={() => { hapticImpact(); router.push({ pathname: '/(tabs)/focus', params: { taskId: momentum.id } }); }} style={({ pressed }) => [styles.nextAction, { backgroundColor: theme.colors.panel, borderColor: theme.colors.border }, pressed && pressedStyle]}>
             <View style={styles.nextCopy}><Text style={[styles.nextTitle, { color: theme.colors.text }]} numberOfLines={2}>{momentum.title}</Text><Text style={[styles.nextMeta, { color: theme.colors.muted }]}>{momentum.firstStep || `${momentum.durationMinutes} min · ${momentum.estimatedPomodoros} foco`}</Text></View>
             <View style={[styles.focusButton, { backgroundColor: theme.colors.inverse }]}><FocoIcon name="play" size={20} color={theme.colors.inverseText} /></View>
           </Pressable>
-        ) : <Empty title="Tu día está despejado" copy="Captura una idea o planifica algo desde Agenda." />}
+        ) : <FocoEmptyState compact state="clear" title="Tu día está despejado" copy="Captura una idea o planifica algo desde Agenda." />}
 
         <SectionTitle title="Planificado" detail={String(plan.scheduled.length)} />
-        {plan.scheduled.length > 0 ? renderRows(plan.scheduled) : <Empty title="Sin bloques fijos" copy="Agenda una hora concreta para verla aquí." />}
+        {plan.scheduled.length > 0 ? renderRows(plan.scheduled) : <FocoEmptyState compact state="clear" title="Sin bloques fijos" copy="Agenda una hora concreta para verla aquí." />}
         {plan.flexible.length > 0 ? <><SectionTitle title="Flexible" detail={String(plan.flexible.length)} />{renderRows(plan.flexible)}</> : null}
         {completedToday.length > 0 ? <><SectionTitle title="Completadas" detail={String(completedToday.length)} />{renderRows(completedToday)}</> : null}
       </FocoScreen>
@@ -103,11 +108,6 @@ export function TodayScreen() {
       <ReplanSheet visible={replanOpen} onClose={() => setReplanOpen(false)} onOpenTask={(task) => { setReplanOpen(false); openTask(task); }} />
     </>
   );
-}
-
-function Empty({ title, copy }: { title: string; copy: string }) {
-  const theme = useFocoTheme();
-  return <View style={[styles.empty, { borderBottomColor: theme.colors.borderSoft }]}><Text style={[styles.emptyTitle, { color: theme.colors.text }]}>{title}</Text><Text style={[styles.emptyCopy, { color: theme.colors.muted }]}>{copy}</Text></View>;
 }
 
 const styles = StyleSheet.create({
@@ -134,7 +134,4 @@ const styles = StyleSheet.create({
   nextTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 15.5, lineHeight: 20 },
   nextMeta: { fontFamily: 'InstrumentSans_400Regular', fontSize: 10.5, lineHeight: 14, marginTop: 3 },
   focusButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  empty: { minHeight: 74, alignItems: 'center', justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 18 },
-  emptyTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13.5, lineHeight: 18 },
-  emptyCopy: { fontFamily: 'InstrumentSans_400Regular', fontSize: 10.5, lineHeight: 14, textAlign: 'center', marginTop: 3 },
 });
