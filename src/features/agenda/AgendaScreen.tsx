@@ -16,6 +16,7 @@ import { useFocoTheme } from '@/src/ui/FocoThemeContext';
 import { useFocoUI } from '@/src/ui/FocoUIContext';
 import { motion } from '@/src/ui/motion';
 import { hapticSelection, hapticSuccess, pressedStyle, useReducedMotion } from '@/src/ui/premium';
+import { resolveProjectColor } from '@/src/ui/projectColors';
 import { DayTimeline } from './DayTimeline';
 import { MonthCalendar } from './MonthCalendar';
 
@@ -37,7 +38,7 @@ export function AgendaScreen() {
   const [routinesOpen, setRoutinesOpen] = useState(false);
   const [draftStart, setDraftStart] = useState<number | undefined>();
   const buckets = useMemo(() => getAgendaBuckets(state), [state]);
-  const projectMap = useMemo(() => new Map(state.projects.map((project) => [project.id, project.name])), [state.projects]);
+  const projectMap = useMemo(() => new Map(state.projects.map((project) => [project.id, project])), [state.projects]);
   const pomodoros = useMemo(() => {
     const values = new Map<string, number>();
     for (const session of state.sessions) if (session.taskId && session.mode === 'pomodoro' && session.phase === 'focus' && session.completed) values.set(session.taskId, (values.get(session.taskId) ?? 0) + 1);
@@ -72,7 +73,10 @@ export function AgendaScreen() {
     showUndo(`${task.title} completada`, () => { reopenTask(task.id); if (result.generatedTask) deleteTask(result.generatedTask.id); });
   };
 
-  const renderRows = (tasks: Task[]) => tasks.map((task) => <TaskRow key={task.id} task={task} projectName={projectMap.get(task.projectId) ?? 'Sin proyecto'} completedPomodoros={pomodoros.get(task.id) ?? 0} onPress={() => openTask(task)} onToggle={() => toggle(task)} />);
+  const renderRows = (tasks: Task[]) => tasks.map((task) => {
+    const project = projectMap.get(task.projectId);
+    return <TaskRow key={task.id} task={task} projectName={project?.name ?? 'Sin proyecto'} projectColor={project ? resolveProjectColor(project.color, theme.mode) : undefined} completedPomodoros={pomodoros.get(task.id) ?? 0} onPress={() => openTask(task)} onToggle={() => toggle(task)} />;
+  });
   const dateLabel = new Date(selectedDate).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, (value) => value.toUpperCase());
   const modeEntering = reducedMotion ? undefined : FadeIn.duration(motion.fast);
 
