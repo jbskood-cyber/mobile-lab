@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 
 import { getActivityHeatmap, getPeriodStats, getProjectDistribution, getRecentSessions, getStreak, getTaskDistribution, type AnalyticsPeriod } from '@/src/core/analytics';
 import { useFocoStore } from '@/src/core/FocoStore';
-import { formatDuration } from '@/src/core/model';
+import { DAY_MS, formatDuration, type FocusSession } from '@/src/core/model';
 import { FocoIcon, type IconName } from '@/src/ui/FocoIcon';
 import { FocoScreen, SectionTitle } from '@/src/ui/FocoShell';
 import { useFocoTheme } from '@/src/ui/FocoThemeContext';
@@ -36,6 +36,15 @@ export function StatsScreen() {
     for (const session of state.sessions) if (session.phase === 'focus') values[new Date(session.endedAt).getHours()] = (values[new Date(session.endedAt).getHours()] ?? 0) + session.durationSec;
     return values.map((seconds, hour) => ({ hour, seconds })).sort((a, b) => b.seconds - a.seconds).slice(0, 3);
   }, [state.sessions]);
+  const seriesColors = useMemo(() => stats.series.map((point, index) => {
+    const end = stats.series[index + 1]?.start ?? stats.end;
+    const projectId = dominantProjectId(state.sessions, point.start, end);
+    return projectId ? projectColors.get(projectId) ?? theme.colors.text : theme.colors.text;
+  }), [projectColors, state.sessions, stats.end, stats.series, theme.colors.text]);
+  const heatmapColors = useMemo(() => heatmap.map((point) => {
+    const projectId = dominantProjectId(state.sessions, point.start, point.start + DAY_MS);
+    return projectId ? projectColors.get(projectId) ?? theme.colors.text : undefined;
+  }), [heatmap, projectColors, state.sessions, theme.colors.text]);
 
   return (
     <FocoScreen title="Progreso" subtitle="Datos que ayudan a ajustar tu siguiente día." screenKey="stats" rightIcon="calendar" rightAccessibilityLabel="Volver al periodo actual" onRightPress={() => setAnchor(Date.now())}>
@@ -47,7 +56,7 @@ export function StatsScreen() {
       {stats.totalFocusSec === 0 && stats.completedTasks === 0 ? <Pressable accessibilityRole="button" accessibilityLabel="Iniciar una sesión" onPress={() => router.push('/(tabs)/focus')} style={({ pressed }) => [styles.emptyHero, { backgroundColor: theme.colors.inverse }, pressed && pressedStyle]}><FocoIcon name="play" size={20} color={theme.colors.inverseText} /><View style={styles.emptyHeroCopy}><Text style={[styles.emptyHeroTitle, { color: theme.colors.inverseText }]}>Periodo sin actividad</Text><Text style={[styles.emptyHeroText, { color: theme.colors.inverseText }]}>Un bloque pequeño es suficiente para empezar.</Text></View><FocoIcon name="chevron-right" size={16} color={theme.colors.inverseText} /></Pressable> : null}
 
       <SectionTitle title="Tendencia" detail={stats.changePercent === 0 ? 'Sin cambio' : `${stats.changePercent > 0 ? '+' : ''}${Math.round(stats.changePercent)}%`} />
-      <View style={[styles.chart, { borderColor: theme.colors.borderSoft }]}>{stats.series.map((point, index) => <View key={point.start} style={styles.barColumn}><View style={styles.barSpace}><View style={[styles.bar, { height: `${Math.max(4, point.focusSeconds / maxSeries * 100)}%`, backgroundColor: theme.colors.text }]} /></View><Text style={[styles.barLabel, { color: theme.colors.subtle }]}>{seriesLabel(period, point.start, index)}</Text></View>)}</View>
+      <View style={[styles.chart, { borderColor: theme.colors.borderSoft }]}>{stats.series.map((point, index) => <View key={point.start} style={styles.barColumn}><View style={styles.barSpace}><View style={[styles.bar, { height: `${Math.max(4, point.focusSeconds / maxSeries * 100)}%`, backgroundColor: seriesColors[index] ?? theme.colors.text }]} /></View><Text style={[styles.barLabel, { color: theme.colors.subtle }]}>{seriesLabel(period, point.start, index)}</Text></View>)}</View>
       <View style={styles.trendFooter}><Text style={[styles.smallLabel, { color: theme.colors.muted }]}>Promedio por sesión</Text><Text style={[styles.smallValue, { color: theme.colors.text }]}>{formatDuration(stats.averageSessionSec, true)}</Text></View>
 
       <SectionTitle title="Plan frente a ejecución" detail={`${Math.round(completionRatio * 100)}%`} />
@@ -62,12 +71,21 @@ export function StatsScreen() {
       <View style={[styles.productive, { borderColor: theme.colors.borderSoft }]}>{productiveHours.map((item, index) => <View key={item.hour} style={styles.productiveItem}><Text style={[styles.productiveRank, { color: theme.colors.muted }]}>#{index + 1}</Text><Text style={[styles.productiveHour, { color: theme.colors.text }]}>{String(item.hour).padStart(2, '0')}:00</Text><Text style={[styles.productiveTime, { color: theme.colors.muted }]}>{formatDuration(item.seconds, true)}</Text></View>)}</View>
 
       <SectionTitle title="Actividad de 90 días" />
-      <View style={[styles.heatmapSection, { borderColor: theme.colors.borderSoft }]}><View style={styles.heatmapLabels}>{['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((label) => <Text key={label} style={[styles.dayLabel, { color: theme.colors.subtle }]}>{label}</Text>)}</View><View style={styles.heatmap}>{heatmap.map((point) => { const value = point.focusSeconds / 1800 + point.completedTasks; const level = value === 0 ? 0 : Math.min(4, Math.ceil(value / maxActivity * 4)); const palette = [theme.colors.panelStrong, theme.colors.bgRaised, theme.colors.inactive, theme.colors.muted, theme.colors.text]; return <View key={point.start} accessibilityLabel={`${new Date(point.start).toLocaleDateString('es-MX')}: ${formatDuration(point.focusSeconds, true)}, ${point.completedTasks} tareas`} style={[styles.cell, { backgroundColor: palette[level] }]} />; })}</View></View>
+      <View style={[styles.heatmapSection, { borderColor: theme.colors.borderSoft }]}><View style={styles.heatmapLabels}>{['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((label) => <Text key={label} style={[styles.dayLabel, { color: theme.colors.subtle }]}>{label}</Text>)}</View><View style={styles.heatmap}>{heatmap.map((point, index) => { const value = point.focusSeconds / 1800 + point.completedTasks; const level = value === 0 ? 0 : Math.min(4, Math.ceil(value / maxActivity * 4)); const projectColor = heatmapColors[index]; const backgroundColor = level === 0 ? theme.colors.panelStrong : projectColor ?? theme.colors.text; return <View key={point.start} accessibilityLabel={`${new Date(point.start).toLocaleDateString('es-MX')}: ${formatDuration(point.focusSeconds, true)}, ${point.completedTasks} tareas`} style={[styles.cell, { backgroundColor, opacity: level === 0 ? 1 : 0.42 + level * 0.145 }]} />; })}</View></View>
 
       <SectionTitle title="Sesiones recientes" detail={String(recent.length)} />
       {recent.length === 0 ? <Text style={[styles.emptyText, { color: theme.colors.muted }]}>Las sesiones aparecerán aquí.</Text> : recent.map((session) => <View key={session.id} style={[styles.session, { borderBottomColor: theme.colors.borderSoft }]}><View style={[styles.sessionMarker, { backgroundColor: projectColors.get(session.projectId) ?? theme.colors.text }]} /><View style={styles.sessionCopy}><Text style={[styles.sessionTitle, { color: theme.colors.text }]} numberOfLines={1}>{session.taskTitle ?? session.projectName}</Text><Text style={[styles.sessionMeta, { color: theme.colors.muted }]}>{new Date(session.endedAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} · {session.projectName}</Text></View><Text style={[styles.sessionTime, { color: theme.colors.text }]}>{formatDuration(session.durationSec, true)}</Text></View>)}
     </FocoScreen>
   );
+}
+
+function dominantProjectId(sessions: FocusSession[], start: number, end: number) {
+  const totals = new Map<string, number>();
+  for (const session of sessions) {
+    if (session.phase !== 'focus' || session.endedAt < start || session.endedAt >= end) continue;
+    totals.set(session.projectId, (totals.get(session.projectId) ?? 0) + session.durationSec);
+  }
+  return [...totals.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0]?.[0];
 }
 
 function Metric({ icon, value, label }: { icon: IconName; value: string; label: string }) { const theme = useFocoTheme(); return <View style={styles.metric}><FocoIcon name={icon} size={17} color={theme.colors.muted} /><Text style={[styles.metricValue, { color: theme.colors.text }]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text><Text style={[styles.metricLabel, { color: theme.colors.muted }]}>{label}</Text></View>; }
