@@ -1,4 +1,30 @@
-export type ProjectIcon = 'briefcase' | 'book' | 'heart' | 'grid' | 'bulb' | 'archive';
+export const PROJECT_ICON_IDS = [
+  'briefcase', 'book', 'heart', 'grid', 'bulb', 'archive', 'home', 'calendar',
+  'target', 'star', 'note', 'checklist', 'flame', 'clock', 'folder', 'bars',
+  'graduation-cap', 'atom', 'dumbbell', 'bicycle', 'code', 'laptop', 'coin', 'wallet',
+  'camera', 'music-note', 'palette', 'airplane', 'leaf', 'mountain', 'trophy', 'users',
+] as const;
+export type ProjectIcon = (typeof PROJECT_ICON_IDS)[number];
+
+export const PROJECT_COLOR_IDS = [
+  'emerald', 'eucalyptus', 'lime', 'turquoise', 'pacific', 'electric-blue',
+  'indigo', 'crimson', 'coral', 'amber-soft', 'violet', 'plum',
+] as const;
+export type ProjectColor = (typeof PROJECT_COLOR_IDS)[number];
+
+export function isProjectIcon(value: unknown): value is ProjectIcon {
+  return typeof value === 'string' && (PROJECT_ICON_IDS as readonly string[]).includes(value);
+}
+
+export function isProjectColor(value: unknown): value is ProjectColor {
+  return typeof value === 'string' && (PROJECT_COLOR_IDS as readonly string[]).includes(value);
+}
+
+export function defaultProjectColor(index: number): ProjectColor {
+  const safeIndex = Math.abs(Math.trunc(Number.isFinite(index) ? index : 0));
+  return PROJECT_COLOR_IDS[safeIndex % PROJECT_COLOR_IDS.length] ?? 'emerald';
+}
+
 export type TaskPriority = 'Alta' | 'Media' | 'Baja';
 export type FocusMode = 'pomodoro' | 'timer' | 'stopwatch';
 export type FocusPhase = 'focus' | 'shortBreak' | 'longBreak';
@@ -23,6 +49,7 @@ export type Project = {
   id: string;
   name: string;
   icon: ProjectIcon;
+  color: ProjectColor;
   archived: boolean;
   description: string;
   sortOrder: number;
@@ -209,6 +236,7 @@ export function createInitialState(now = Date.now()): FocoState {
     id,
     name,
     icon,
+    color: defaultProjectColor(index),
     archived: false,
     description: '',
     sortOrder: index,
@@ -487,15 +515,46 @@ export function deleteSubtask(state: FocoState, taskId: string, subtaskId: strin
 export function deleteTask(state: FocoState, taskId: string) { return { ...state, tasks: state.tasks.filter((task) => task.id !== taskId) }; }
 export function restoreTask(state: FocoState, task: Task) { return state.tasks.some((item) => item.id === task.id) ? state : { ...state, tasks: [task, ...state.tasks] }; }
 
-export function addProject(state: FocoState, name: string, icon: ProjectIcon = 'grid', now = Date.now()): FocoState {
+export function addProject(
+  state: FocoState,
+  name: string,
+  icon: ProjectIcon = 'grid',
+  colorOrNow: ProjectColor | number = defaultProjectColor(state.projects.length),
+  now = Date.now(),
+): FocoState {
   const normalized = name.trim();
   if (!normalized || state.projects.some((project) => project.name.toLowerCase() === normalized.toLowerCase())) return state;
-  const project: Project = { id: makeId('project', now, state.projects.length + 1), name: normalized, icon, archived: false, description: '', sortOrder: state.projects.length, createdAt: now, updatedAt: now };
+  const createdAt = typeof colorOrNow === 'number' ? colorOrNow : now;
+  const color = typeof colorOrNow === 'number'
+    ? defaultProjectColor(state.projects.length)
+    : isProjectColor(colorOrNow) ? colorOrNow : defaultProjectColor(state.projects.length);
+  const project: Project = {
+    id: makeId('project', createdAt, state.projects.length + 1),
+    name: normalized,
+    icon: isProjectIcon(icon) ? icon : 'grid',
+    color,
+    archived: false,
+    description: '',
+    sortOrder: state.projects.length,
+    createdAt,
+    updatedAt: createdAt,
+  };
   return { ...state, projects: [project, ...state.projects] };
 }
 
-export function updateProject(state: FocoState, projectId: string, patch: Partial<Pick<Project, 'name' | 'icon' | 'description' | 'archived' | 'sortOrder'>>, now = Date.now()): FocoState {
-  return { ...state, projects: state.projects.map((project) => project.id === projectId ? { ...project, ...patch, name: patch.name === undefined ? project.name : patch.name.trim() || project.name, description: patch.description === undefined ? project.description : patch.description.trim(), updatedAt: now } : project) };
+export function updateProject(state: FocoState, projectId: string, patch: Partial<Pick<Project, 'name' | 'icon' | 'color' | 'description' | 'archived' | 'sortOrder'>>, now = Date.now()): FocoState {
+  return {
+    ...state,
+    projects: state.projects.map((project) => project.id === projectId ? {
+      ...project,
+      ...patch,
+      name: patch.name === undefined ? project.name : patch.name.trim() || project.name,
+      icon: patch.icon === undefined ? project.icon : isProjectIcon(patch.icon) ? patch.icon : project.icon,
+      color: patch.color === undefined ? project.color : isProjectColor(patch.color) ? patch.color : project.color,
+      description: patch.description === undefined ? project.description : patch.description.trim(),
+      updatedAt: now,
+    } : project),
+  };
 }
 
 export function toggleProjectArchived(state: FocoState, projectId: string) {
@@ -594,7 +653,12 @@ export function normalizeState(value: unknown, now = Date.now()): FocoState {
   if (!value || typeof value !== 'object') return createInitialState(now);
   const candidate = value as Partial<FocoState>;
   if (candidate.version !== 3 || !Array.isArray(candidate.projects) || !Array.isArray(candidate.tasks) || !Array.isArray(candidate.sessions)) return createInitialState(now);
-  return { ...candidate, version: 3, routines: Array.isArray(candidate.routines) ? candidate.routines : [], preferences: { ...defaultFocusPreferences, ...(candidate.preferences ?? {}) }, planning: { ...defaultPlanningPreferences, ...(candidate.planning ?? {}) }, appearance: candidate.appearance ?? 'system' } as FocoState;
+  const projects = candidate.projects.map((project, index) => ({
+    ...project,
+    icon: isProjectIcon(project.icon) ? project.icon : 'grid',
+    color: isProjectColor(project.color) ? project.color : defaultProjectColor(project.sortOrder ?? index),
+  }));
+  return { ...candidate, version: 3, projects, routines: Array.isArray(candidate.routines) ? candidate.routines : [], preferences: { ...defaultFocusPreferences, ...(candidate.preferences ?? {}) }, planning: { ...defaultPlanningPreferences, ...(candidate.planning ?? {}) }, appearance: candidate.appearance ?? 'system' } as FocoState;
 }
 
 export function addTask(state: FocoState, title: string, projectId = 'personal', priority: TaskPriority = 'Media', now = Date.now()) { return createTask(state, { title, projectId, priority, dueAt: now, captured: false }, now); }
