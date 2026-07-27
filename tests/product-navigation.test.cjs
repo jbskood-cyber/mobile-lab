@@ -16,15 +16,18 @@ const expected = [
 test('primary navigation exposes the five product jobs in order', () => {
   let cursor = -1;
   for (const [route, title] of expected) {
-    const location = layout.indexOf(`name=\"${route}\"`);
+    const location = layout.indexOf(`name="${route}"`);
     assert.ok(location > cursor, `${route} must appear after the previous tab`);
     assert.ok(layout.includes(`title: '${title}'`));
     cursor = location;
   }
 });
 
-test('custom tab bar has labels and icons for every route', () => {
-  for (const [route, label] of expected) {
+test('current-section capsule retains labels and icons for every primary route without rendering five persistent controls', () => {
+  assert.match(tabBar, /DEFAULT_ROUTE_META: RouteMeta = \{ label: 'Hoy', icon: 'home' \}/);
+  for (const [route, label] of expected.slice(1)) {
     assert.match(tabBar, new RegExp(`${route}: \\{ label: '${label}'`));
   }
+  assert.match(tabBar, /currentMeta/);
+  assert.doesNotMatch(tabBar, /state\.routes\.map/);
 });
