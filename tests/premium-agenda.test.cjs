@@ -118,7 +118,7 @@ test('Monthly calendar supports single select and same-day double tap to exact D
   assert.match(month, /registerCalendarTap/);
   assert.match(month, /onPressIn/);
   assert.doesNotMatch(month, /DOUBLE_TAP_MS\s*=\s*280/);
-  assert.doesNotMatch(month, /lastTap\.current.*Date\.now\(\).*onPress/s);
+  assert.doesNotMatch(month, /const previous = lastTap\.current/);
   assert.match(month, /onSelect\(timestamp\)/);
   assert.match(month, /onOpenDay\(timestamp\)/);
   assert.match(agenda, /openCalendarDay/);
