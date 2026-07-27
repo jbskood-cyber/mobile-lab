@@ -10,7 +10,7 @@ import { useFocoUI } from './FocoUIContext';
 type RouteMeta = { label: string; icon: IconName };
 const DEFAULT_ROUTE_META: RouteMeta = { label: 'Hoy', icon: 'home' };
 const routeMeta: Record<string, RouteMeta> = {
-  index: DEFAULT_ROUTE_META,
+  index: { label: 'Hoy', icon: 'home' },
   agenda: { label: 'Agenda', icon: 'calendar' },
   focus: { label: 'Enfoque', icon: 'circle' },
   projects: { label: 'Proyectos', icon: 'folder' },
