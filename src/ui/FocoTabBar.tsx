@@ -7,8 +7,10 @@ import { FocoPressable } from './FocoPressable';
 import { useFocoTheme } from './FocoThemeContext';
 import { useFocoUI } from './FocoUIContext';
 
-const routeMeta: Record<string, { label: string; icon: IconName }> = {
-  index: { label: 'Hoy', icon: 'home' },
+type RouteMeta = { label: string; icon: IconName };
+const DEFAULT_ROUTE_META: RouteMeta = { label: 'Hoy', icon: 'home' };
+const routeMeta: Record<string, RouteMeta> = {
+  index: DEFAULT_ROUTE_META,
   agenda: { label: 'Agenda', icon: 'calendar' },
   focus: { label: 'Enfoque', icon: 'circle' },
   projects: { label: 'Proyectos', icon: 'folder' },
@@ -20,7 +22,7 @@ export function FocoTabBar({ state }: BottomTabBarProps) {
   const theme = useFocoTheme();
   const { keyboardVisible, overlayCount, appMenuVisible, focusImmersive, openAppMenu } = useFocoUI();
   const currentRoute = state.routes[state.index];
-  const currentMeta = routeMeta[currentRoute?.name ?? 'index'] ?? routeMeta.index;
+  const currentMeta = routeMeta[currentRoute?.name ?? 'index'] ?? DEFAULT_ROUTE_META;
 
   if (keyboardVisible || overlayCount > 0 || appMenuVisible || focusImmersive) return null;
 
