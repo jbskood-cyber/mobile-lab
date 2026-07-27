@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const { createInitialState, startOfLocalDay } = require('../.core-test-dist/core/model.js');
 const { getAgendaSessionEvents, getAgendaTimelineWindow } = require('../.core-test-dist/core/agendaDay.js');
+const { registerCalendarTap } = require('../.core-test-dist/core/calendarTap.js');
 
 const timelinePath = path.join(process.cwd(), 'src', 'features', 'agenda', 'DayTimeline.tsx');
 const monthCalendarPath = path.join(process.cwd(), 'src', 'features', 'agenda', 'MonthCalendar.tsx');
@@ -93,13 +94,27 @@ test('Day timeline renders real sessions as readable event blocks instead of 3px
   assert.match(source, /Real/);
 });
 
+test('calendar tap recognizer opens only the same date within 450ms', () => {
+  const first = registerCalendarTap(null, 100, 1_000);
+  assert.deepEqual(first, { next: { day: 100, at: 1_000 }, openDay: false });
+
+  const second = registerCalendarTap(first.next, 100, 1_430);
+  assert.deepEqual(second, { next: null, openDay: true });
+});
+
+test('calendar tap recognizer does not combine different dates or slow taps', () => {
+  const first = registerCalendarTap(null, 100, 1_000);
+  const otherDay = registerCalendarTap(first.next, 200, 1_200);
+  assert.deepEqual(otherDay, { next: { day: 200, at: 1_200 }, openDay: false });
+
+  const slow = registerCalendarTap({ day: 100, at: 1_000 }, 100, 1_451);
+  assert.deepEqual(slow, { next: { day: 100, at: 1_451 }, openDay: false });
+});
+
 test('Monthly calendar supports single select and same-day double tap to exact Day mode', () => {
   const month = read(monthCalendarPath);
   const agenda = read(agendaScreenPath);
   assert.match(month, /onOpenDay/);
-  assert.match(month, /lastTap/);
-  assert.match(month, /280/);
-  assert.match(month, /handleDayPress\(day\.timestamp\)/);
   assert.match(month, /onSelect\(timestamp\)/);
   assert.match(month, /onOpenDay\(timestamp\)/);
   assert.match(agenda, /openCalendarDay/);
