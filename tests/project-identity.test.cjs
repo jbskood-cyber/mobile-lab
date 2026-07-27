@@ -19,6 +19,8 @@ const iconSourcePath = path.join(process.cwd(), 'src', 'ui', 'FocoIcon.tsx');
 const paletteSourcePath = path.join(process.cwd(), 'src', 'ui', 'projectColors.ts');
 const editorSourcePath = path.join(process.cwd(), 'src', 'features', 'projects', 'ProjectEditorSheet.tsx');
 const storeSourcePath = path.join(process.cwd(), 'src', 'core', 'FocoStore.tsx');
+const projectsSourcePath = path.join(process.cwd(), 'src', 'features', 'projects', 'ProjectsScreen.tsx');
+const projectDetailSourcePath = path.join(process.cwd(), 'src', 'features', 'projects', 'ProjectDetailScreen.tsx');
 
 test('project identity catalogs are finite, unique, and seeded on every project', () => {
   assert.equal(PROJECT_ICON_IDS.length, 32);
@@ -114,4 +116,15 @@ test('project editor exposes independent solid color and 32-icon selectors', () 
   assert.match(editor, /updateProject\(project\.id, \{ name, description, icon, color \}\)/);
   assert.match(store, /addProject: \(name: string, icon\?: ProjectIcon, color\?: ProjectColor\)/);
   assert.match(store, /'name' \| 'icon' \| 'color'/);
+});
+
+test('project list and detail render contextual project identity without recoloring global chrome', () => {
+  const projects = fs.readFileSync(projectsSourcePath, 'utf8');
+  const detail = fs.readFileSync(projectDetailSourcePath, 'utf8');
+  assert.match(projects, /resolveProjectColor/);
+  assert.match(projects, /project\.color/);
+  assert.match(projects, /projectColor/);
+  assert.match(detail, /resolveProjectColor/);
+  assert.match(detail, /project\.color/);
+  assert.match(detail, /projectColor/);
 });
